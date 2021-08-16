@@ -1,35 +1,24 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
 from matplotlib import pyplot as plt
-from matplotlib.collections import LineCollection
-from matplotlib.colors import ListedColormap, BoundaryNorm
 
 
 def flatten_list(list_of_lists):
     return [item for sublist in list_of_lists for item in sublist]
 
 
-def get_df_with_sample_id(df: pd.DataFrame, m_sample_size: int = 1):
-    assert m_sample_size > 0, "Sample size must be a positive integer > 0"
+def get_df_with_sample_id(df: pd.DataFrame, n_sample_size: int = 1):
+    assert n_sample_size > 0, "Sample size must be a positive integer > 0"
     df_copy = df.copy()
     n_obs = len(df)
-    n_subgroups = int(np.ceil(n_obs / m_sample_size))
-    sample = np.repeat([i for i in range(1, n_subgroups + 1)], m_sample_size)
+    n_subgroups = int(np.ceil(n_obs / n_sample_size))
+    sample = np.repeat([i for i in range(1, n_subgroups + 1)], n_sample_size)
     df_copy["sample_id"] = list(sample)[:n_obs]
-    # rearrange columns to have sample_id as the first column
+    # rearrange columns to have sample_id as the first column, if it isn't already
     cols = df_copy.columns.values.tolist()
-    cols = cols[-1:] + cols[:-1]
+    if not cols[0] == "sample_id":
+        cols = cols[-1:] + cols[:-1]
     return df_copy[cols]
-
-
-def get_df_with_sample_means_and_ranges(df: pd.DataFrame,
-                                        input_col: str,
-                                        grouping_column: str = "sample_id"):
-    df_means_and_ranges = df.groupby(grouping_column).agg(
-        sample_mean=pd.NamedAgg(column=input_col, aggfunc=np.mean),
-        sample_range=pd.NamedAgg(column=input_col, aggfunc=lambda grp: (max(grp) - min(grp)))
-    )
-    return df_means_and_ranges
 
 
 class ControlChartPlotMixin:
