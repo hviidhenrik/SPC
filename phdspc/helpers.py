@@ -21,6 +21,19 @@ def get_df_with_sample_id(df: pd.DataFrame, n_sample_size: int = 1):
     return df_copy[cols]
 
 
+def multiply_matrices(*arrays: np.array):
+    """
+    Helper function to multiply an arbitrary number of matrices with appropriate dimensions wrt each other.
+
+    :param arrays: the matrices, given as numpy arrays, to be multiplied together
+    :return: the matrix product
+    """
+    product = arrays[0]
+    for array in arrays[1:]:
+        product = np.matmul(product, array)
+    return product
+
+
 class ControlChartPlotMixin:
 
     def __init__(self):

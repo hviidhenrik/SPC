@@ -1,13 +1,23 @@
 from abc import abstractmethod
+from typing import Optional
+
+import pandas as pd
 
 from phdspc.constants import *
 from phdspc.helpers import *
 
+from sklearn.preprocessing import StandardScaler
+
 
 class BaseControlChart(ControlChartPlotMixin):
 
-    def __init__(self):
+    def __init__(self, n_sample_size: float):
         self.is_fitted = False
+        self.UCL = None
+        self.LCL = None
+        self.center_line = None
+        self.stat_name = None
+        self.n_sample_size = n_sample_size
 
     @abstractmethod
     def fit(self, df_phase1: pd.DataFrame, *args, **kwargs):
@@ -42,17 +52,13 @@ class XBarChart(BaseControlChart):
         or "std" (standard deviation). Std is preferred if n_sample_size > 10. Defaults to "auto", which
         automatically decides which estimator is most appropriate for the situation.
         """
-        super().__init__()
-        assert n_sample_size > 1, "Sample/subgroup size must be greater than 1"
+        super().__init__(n_sample_size=n_sample_size)
+        assert self.n_sample_size > 1, "Sample/subgroup size must be greater than 1"
         assert variability_estimator.lower() in ["auto", "range", "std"], "Variance estimator must be one of " \
                                                                           "\"auto\", \"range\" or \"std\""""
-        self.UCL = None
-        self.LCL = None
-        self.center_line = None
+        self.stat_name = "sample_mean"
         self.variability_Rbar_or_sbar = None
         self.input_name = None
-        self.stat_name = "sample_mean"
-        self.n_sample_size = n_sample_size
         self.df_phase1_stats = None
         self.df_phase1_results = None
         self.df_phase2_stats = None
@@ -201,7 +207,10 @@ class XBarChart(BaseControlChart):
 class RChart(XBarChart):
     """
     Univariate control chart for monitoring the process variation of a quality characteristic.
-    Assumes normally distributed, non-autocorrelated data.
+    Assumes normally distributed, non-autocorrelated data. The R-chart uses an estimate
+    of variability based on the in-sample range contrary to the s-chart, which uses the
+    standard deviation to estimate variability.
+    The R-chart is best suited for samples of size n < 10 or 12.
     """
 
     def fit(self, df_phase1: pd.DataFrame, *args, **kwargs):
@@ -262,15 +271,110 @@ class RChart(XBarChart):
         plt.ylabel(f"Within sample variation [{unit}]")
 
 
-class EWMA():
-    pass
+class SChart(RChart):
+    """
+    Univariate control chart for monitoring the in-sample variation of a quality characteristic.
+    Assumes normally distributed, non-autocorrelated data. The s-chart uses an estimate
+    of variability based on the in-sample standard deviations contrary to the R-chart, which uses the
+    range to estimate variability. The s-chart is better suited for samples of size n > 10 or 12.
+    """
+
+    def __init__(self, n_sample_size: int = 5):
+        super().__init__(n_sample_size=n_sample_size,
+                         variability_estimator="std")
+
+
+# TODO combine with PCA
+#  - implement for sample_size > 1
+class MEWMAChart(BaseControlChart, ControlChartPlotMixin):
+    """
+    - Note, that this is a phase 2 procedure. However, the process target/mean, mu, can reasonably
+      be obtained from in-control phase 1 data.
+    - Typically used with individual observations, i.e. sample size n = 1, but works for n > 1, too.
+    - Small values of lambda seems a good default choice for this procedure, as it makes the procedure:
+       1) robust to the underlying distribution, e.g. it is robust to data exhibiting non-normality.
+       2) effective in detecting small shifts for small values of lambda.
+    - It is recommended to use the EWMA together with a Shewhart chart, e.g. x-bar or Hotelling T^2,
+      as the EWMA is slower at detecting large shifts than the Shewhart type chart.
+    Based on Montgomery, 2013, chapter 11.4, p. 524.
+    """
+
+    def __init__(self, n_sample_size: int = 1, lambda_: float = 0.1, sigma: Optional[np.array] = None):
+        super().__init__(n_sample_size=n_sample_size)
+        assert self.n_sample_size > 0, "Sample/subgroup size must be greater than 0."
+        assert 0.0 < lambda_ <= 1.0, "Bad lambda value given. Lambda must be in the interval 0 < lambda <= 1."
+        self.stat_name = "T2"
+        self.df_phase2_stats = None
+        self.input_dim = None
+        self.lambda_ = lambda_
+        self.sigma = sigma
+
+    def fit(self, df_phase2: pd.DataFrame, *args, **kwargs):
+        self.input_dim = df_phase2.shape[1]
+        df_phase2_copy = df_phase2.copy()
+
+        if self.sigma is not None:
+            assert self.sigma.shape == (self.input_dim, self.input_dim), "The matrix \"sigma\" must have dimensions " \
+                                                                         "equal to the number of input features. E.g. 2 x 2 for 2 input features."
+        else:
+            self.sigma = df_phase2_copy.corr()  # the correlation matrix
+
+        Z = [np.zeros(shape=self.input_dim)]
+        T2 = []
+        df_phase2_copy = np.array(df_phase2_copy)
+        for i in range(1, df_phase2_copy.shape[0] + 1):
+            x_i = df_phase2_copy[i-1, ]
+            z_i = self.lambda_ * x_i + (1 - self.lambda_) * Z[i-1]  # eq: 11.30
+            Z.append(z_i)
+            sigma_i = (self.lambda_ / (2 - self.lambda_)) * (1 - (1 - self.lambda_)**(2*i)) * self.sigma  # eq: 11.32
+            T2.append(multiply_matrices(z_i.transpose(), np.linalg.inv(sigma_i), z_i))  # eq: 11.31
+
+        Z.pop(0)
+        df_Z = pd.DataFrame(Z, columns=[f"Z{i}" for i in range(1, self.input_dim+1)])
+        self.df_phase2_stats = df_phase2.copy()
+        self.df_phase2_stats = pd.concat([self.df_phase2_stats, df_Z], axis=1)
+        self.df_phase2_stats[self.stat_name] = T2
+        self.is_fitted = True
+        return self
+
+    def compute_delta(self, mu_shifted: np.array):
+        """
+        This method computes the quantity, delta, of equation 11.33 of Montgomery called the non-centrality parameter.
+        It is a measure of a given shift size given by a p x 1 vector, mu, of standard deviations. E.g. for a 6-dimensional
+        dataset / process, a vector mu = [1, 1, 1, 1, 1, 1] corresponds to a shift of exactly one standard deviation in each
+        feature dimension. Consequently, the zero-vector represents a normal condition.
+
+        :param mu_shifted: the p x 1 shift vector of standard deviations each feature has shifted from the process target.
+        :return: the non-centrality parameter, delta = (mu^T * sigma^(-1) * mu)^(1/2). This value measures the multivariate
+        size of the shift, all dimensions considered.
+        """
+        assert self.is_fitted, "No correlation matrix available. Run the fit() method first on suitable phase 2 data."
+        return np.sqrt(multiply_matrices(mu_shifted.transpose(), np.linalg.inv(self.sigma), mu_shifted))
+
+    def plot_phase2(self):
+        """
+        Plots the obtained phase 2 statistics for the multivariate EWMA procedure. Requires fit() to have been run first.
+        """
+        self._plot_single_phase(self.df_phase2_stats)
+        plt.title(f"Phase 2 MEWMA-chart")
+        plt.ylabel(r"Sample Hotelling $T^2$")
+        plt.xlabel("Sample")
+
+
+
+
+
+
+class MovingAverage(BaseControlChart):
+    """
+    See chapter 9.3
+    """
+
+    def __init__(self):
+        pass
 
 
 def pareto_chart():
-    pass
-
-
-def shewhart():
     pass
 
 
