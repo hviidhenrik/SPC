@@ -1,2 +1,6 @@
 pytest
 numpy
+pandas
+scikit-learn
+matplotlib
+setuptools

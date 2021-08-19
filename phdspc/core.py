@@ -1,12 +1,7 @@
 from abc import abstractmethod
-from typing import Optional
-
-import pandas as pd
 
 from phdspc.constants import *
 from phdspc.helpers import *
-
-from sklearn.preprocessing import StandardScaler
 
 
 class BaseControlChart(ControlChartPlotMixin):
@@ -308,14 +303,18 @@ class MEWMAChart(BaseControlChart, ControlChartPlotMixin):
         self.input_dim = None
         self.lambda_ = lambda_
         self.sigma = sigma
+        self.df_PCs = None
 
     def fit(self, df_phase2: pd.DataFrame, *args, **kwargs):
         self.input_dim = df_phase2.shape[1]
+        assert self.input_dim > 1, "Multivariate method: number of features must be more than 1. Use the EWMA procedure " \
+                                   "for univariate data."
         df_phase2_copy = df_phase2.copy()
 
         if self.sigma is not None:
             assert self.sigma.shape == (self.input_dim, self.input_dim), "The matrix \"sigma\" must have dimensions " \
-                                                                         "equal to the number of input features. E.g. 2 x 2 for 2 input features."
+                                                                         "equal to the number of input features. " \
+                                                                         "E.g. 2 x 2 for 2 input features."
         else:
             self.sigma = df_phase2_copy.corr()  # the correlation matrix
 
@@ -323,19 +322,33 @@ class MEWMAChart(BaseControlChart, ControlChartPlotMixin):
         T2 = []
         df_phase2_copy = np.array(df_phase2_copy)
         for i in range(1, df_phase2_copy.shape[0] + 1):
-            x_i = df_phase2_copy[i-1, ]
-            z_i = self.lambda_ * x_i + (1 - self.lambda_) * Z[i-1]  # eq: 11.30
+            x_i = df_phase2_copy[i - 1, ]
+            z_i = self.lambda_ * x_i + (1 - self.lambda_) * Z[i - 1]  # eq: 11.30
             Z.append(z_i)
-            sigma_i = (self.lambda_ / (2 - self.lambda_)) * (1 - (1 - self.lambda_)**(2*i)) * self.sigma  # eq: 11.32
+            sigma_i = (self.lambda_ / (2 - self.lambda_)) * (
+                    1 - (1 - self.lambda_) ** (2 * i)) * self.sigma  # eq: 11.32
             T2.append(multiply_matrices(z_i.transpose(), np.linalg.inv(sigma_i), z_i))  # eq: 11.31
 
         Z.pop(0)
-        df_Z = pd.DataFrame(Z, columns=[f"Z{i}" for i in range(1, self.input_dim+1)])
+        df_Z = pd.DataFrame(Z, columns=[f"Z{i}" for i in range(1, self.input_dim + 1)])
         self.df_phase2_stats = df_phase2.copy()
         self.df_phase2_stats = pd.concat([self.df_phase2_stats, df_Z], axis=1)
         self.df_phase2_stats[self.stat_name] = T2
         self.is_fitted = True
         return self
+
+    def fit_on_PCs(self, df_phase2: pd.DataFrame, n_components: int = None, PC_variance_explained_min: float = 0.9,
+                   *args, **kwargs):
+        assert n_components > 1, "Multivariate method: number of features must be more than 1. " \
+                                 "Use the EWMA procedure for univariate data."
+        df_transformed, pca, _ = standardize_and_PCA(df_phase2, n_components=n_components)
+        if n_components is None:
+            cumulative_variances = np.cumsum(pca.explained_variance_ratio_)
+            n_components = np.where(cumulative_variances < PC_variance_explained_min)[0][0] + 2
+        df_transformed = df_transformed[:, :n_components]
+        self.sigma = None  # the standardization and PCA changes the original correlations, so we can't use those
+        self.df_PCs = pd.DataFrame(df_transformed, columns=[f"PC{i}" for i in range(1, n_components + 1)])
+        self.fit(self.df_PCs)
 
     def compute_delta(self, mu_shifted: np.array):
         """
@@ -349,7 +362,10 @@ class MEWMAChart(BaseControlChart, ControlChartPlotMixin):
         size of the shift, all dimensions considered.
         """
         assert self.is_fitted, "No correlation matrix available. Run the fit() method first on suitable phase 2 data."
-        return np.sqrt(multiply_matrices(mu_shifted.transpose(), np.linalg.inv(self.sigma), mu_shifted))
+        mu_shifted_copy = mu_shifted.copy()
+        if isinstance(mu_shifted, list):
+            mu_shifted_copy = np.array(mu_shifted)
+        return np.sqrt(multiply_matrices(mu_shifted_copy.transpose(), np.linalg.inv(self.sigma), mu_shifted_copy))
 
     def plot_phase2(self):
         """
@@ -361,36 +377,27 @@ class MEWMAChart(BaseControlChart, ControlChartPlotMixin):
         plt.xlabel("Sample")
 
 
-
-
-
-
-class MovingAverage(BaseControlChart):
+class HotellingTSquaredChart(MEWMAChart):
     """
-    See chapter 9.3
+    The Hotelling T^2 control chart is a special case of the MEWMA procedure. Namely, for
+    lambda = 1, the MEWMA is exactly equivalent to the Hotelling procedure. This value of
+    lambda ensures that only the latest sample is used in the calculation of the T^2 statistic.
     """
 
+    def __init__(self, n_sample_size: int = 1, sigma: Optional[np.array] = None):
+        super().__init__(n_sample_size=n_sample_size, lambda_=1, sigma=sigma)
+
+
+class EWMAChart(BaseControlChart, ControlChartPlotMixin):
     def __init__(self):
         pass
 
 
-def pareto_chart():
-    pass
-
-
-def hotelling():
-    pass
-
-
-def hotelling_on_PCs():
-    pass
-
-
-def ewma():
-    pass
-
-
 def cusum():
+    pass
+
+
+def pareto_chart():
     pass
 
 

@@ -1,5 +1,9 @@
+from typing import Optional
+
 import numpy as np
 import pandas as pd
+import sklearn.decomposition
+import sklearn.preprocessing
 from matplotlib import pyplot as plt
 
 
@@ -34,6 +38,14 @@ def multiply_matrices(*arrays: np.array):
     return product
 
 
+def standardize_and_PCA(df, n_components: Optional[int] = None):
+    scaler = sklearn.preprocessing.StandardScaler().fit(df)
+    df_transformed = scaler.transform(df)
+    pca = sklearn.decomposition.PCA(n_components=n_components).fit(df_transformed)
+    df_transformed = pca.transform(df_transformed)
+    return df_transformed, pca, scaler
+
+
 class ControlChartPlotMixin:
 
     def __init__(self):
@@ -55,7 +67,7 @@ class ControlChartPlotMixin:
 
         plt.legend(ncol=2)
         y_limits = ax.get_ylim()
-        ax.set_ylim(y_limits[0]-3, y_limits[1]+3)
+        ax.set_ylim(y_limits[0] - 3, y_limits[1] + 3)
         return fig
 
     def _plot_two_phases(self, df_phase1: pd.DataFrame, df_phase2: pd.DataFrame):
@@ -74,5 +86,5 @@ class ControlChartPlotMixin:
         plt.axhline(self.UCL, color="red", linestyle="dashed")
         plt.legend(ncol=2)
         y_limits = ax.get_ylim()
-        ax.set_ylim(y_limits[0]-3, y_limits[1]+3)
+        ax.set_ylim(y_limits[0] - 3, y_limits[1] + 3)
         return fig
