@@ -1,5 +1,6 @@
-from typing import Optional
+from typing import Optional, Union, List
 
+import matplotlib.axes._subplots
 import numpy as np
 import pandas as pd
 import sklearn.decomposition
@@ -55,36 +56,54 @@ class ControlChartPlotMixin:
         self.input_name = None
         self.stat_name = None
 
-    def _plot_single_phase(self, df):
+    @staticmethod
+    def _plot_scalar_or_array(x: Union[float, np.ndarray, List[float]],
+                              ax: matplotlib.axes._subplots.Axes):
+        if isinstance(x, (np.ndarray, list)):
+            ax.plot(x, color="red", linestyle="dashed")  # , label="Control limits")
+        else:
+            ax.axhline(x, color="red", linestyle="dashed", label="Control limits")
+
+    def _plot_single_phase(self, df, y_limit_offsets=(0.95, 1.05)):
         fig, ax = plt.subplots(1, 1)
         ax.plot(df[self.stat_name], linestyle="-", marker="o", color="black")
-        if self.LCL is not None:
-            ax.axhline(self.LCL, color="red", linestyle="dashed", label="Control limits")
-        if self.UCL is not None:
-            ax.axhline(self.UCL, color="red", linestyle="dashed")
+        legend_labels = [self.stat_name]
         if self.center_line is not None:
-            ax.axhline(self.center_line, color="blue", alpha=0.7, label="Center line")
+            ax.axhline(self.center_line, color="blue", alpha=0.7)
+            legend_labels.append("Center line")
+        if self.UCL is not None:
+            self._plot_scalar_or_array(self.UCL, ax)
+            legend_labels.append("Control limit")
+        if self.LCL is not None:
+            self._plot_scalar_or_array(self.LCL, ax)
 
-        plt.legend(ncol=2)
+        plt.legend(legend_labels, ncol=len(legend_labels))
         y_limits = ax.get_ylim()
-        ax.set_ylim(y_limits[0] - 3, y_limits[1] + 3)
+        ax.set_ylim(y_limits[0] * y_limit_offsets[0], y_limits[1] * y_limit_offsets[1])
         return fig
 
-    def _plot_two_phases(self, df_phase1: pd.DataFrame, df_phase2: pd.DataFrame):
+    def _plot_two_phases(self, df_phase1: pd.DataFrame, df_phase2: pd.DataFrame, y_limit_offsets=(0.95, 1.05)):
         fig, ax = plt.subplots(1, 1)
         df = pd.concat([df_phase1, df_phase2])
         df["phase"] = 1
         df["phase"].iloc[len(df_phase1):] = 2
         df = df.reset_index()
 
+        legend_labels = ["Phase 1", "Phase 2"]
         plt.plot(df[self.stat_name][df["phase"] == 1],
-                 linestyle="-", marker="o", color="green", label="Phase 1")
+                 linestyle="-", marker="o", color="green")
         plt.plot(df[self.stat_name][df["phase"] == 2],
-                 linestyle="-", marker="o", color="orange", label="Phase 2")
-        plt.axhline(self.center_line, color="blue", alpha=0.7, label="Center line")
-        plt.axhline(self.LCL, color="red", linestyle="dashed", label="Control limits")
-        plt.axhline(self.UCL, color="red", linestyle="dashed")
-        plt.legend(ncol=2)
+                 linestyle="-", marker="o", color="orange")
+        if self.center_line is not None:
+            ax.axhline(self.center_line, color="blue", alpha=0.7)
+            legend_labels.append("Center line")
+        if self.UCL is not None:
+            self._plot_scalar_or_array(self.UCL, ax)
+            legend_labels.append("Control limit")
+        if self.LCL is not None:
+            self._plot_scalar_or_array(self.LCL, ax)
+
+        plt.legend(legend_labels, ncol=len(legend_labels))
         y_limits = ax.get_ylim()
-        ax.set_ylim(y_limits[0] - 3, y_limits[1] + 3)
+        ax.set_ylim(y_limits[0] * y_limit_offsets[0], y_limits[1] * y_limit_offsets[1])
         return fig

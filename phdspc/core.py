@@ -6,7 +6,7 @@ from phdspc.helpers import *
 
 class BaseControlChart(ControlChartPlotMixin):
 
-    def __init__(self, n_sample_size: float):
+    def __init__(self, n_sample_size: int):
         self.is_fitted = False
         self.UCL = None
         self.LCL = None
@@ -17,6 +17,18 @@ class BaseControlChart(ControlChartPlotMixin):
     @abstractmethod
     def fit(self, df_phase1: pd.DataFrame, *args, **kwargs):
         pass
+
+    def _collect_results_df(self, df_stats: pd.DataFrame):
+        df_stats_copy = df_stats.copy()
+        if self.n_sample_size == 1:
+            df_stats_copy = df_stats_copy[[self.input_name, self.stat_name]]
+        else:
+            df_stats_copy = df_stats_copy[[self.stat_name]]
+        df_stats_copy["LCL"] = self.LCL
+        df_stats_copy["UCL"] = self.UCL
+        df_stats_copy["outside_CL"] = ~df_stats_copy[self.stat_name].between(self.LCL, self.UCL,
+                                                                             inclusive="neither")
+        return df_stats_copy
 
 
 class XBarChart(BaseControlChart):
@@ -69,7 +81,7 @@ class XBarChart(BaseControlChart):
         df_phase1_copy = df_phase1.copy()
         df_phase1_copy = get_df_with_sample_id(df_phase1_copy, n_sample_size=self.n_sample_size)
         self.input_name = df_phase1_copy.columns.values[1]
-        df_phase1_copy = self._remove_samples_with_only_one_observation(df_phase1_copy)
+        df_phase1_copy = self._remove_samples_with_only_one_observation(df_phase1_copy)  # std not defined on singletons
         self.df_phase1_stats = self._get_df_with_sample_means_and_variability(df_phase1_copy,
                                                                               grouping_column="sample_id")
         self.center_line = float(self.df_phase1_stats[self.stat_name].mean())  # x double bar
@@ -172,15 +184,6 @@ class XBarChart(BaseControlChart):
                                                                  grouping_column="sample_id")
         return df_copy
 
-    def _collect_results_df(self, df_stats: pd.DataFrame):
-        df_stats_copy = df_stats.copy()
-        df_stats_copy = df_stats_copy[[self.stat_name]]
-        df_stats_copy["LCL"] = self.LCL
-        df_stats_copy["UCL"] = self.UCL
-        df_stats_copy["outside_CL"] = ~df_stats_copy[self.stat_name].between(self.LCL, self.UCL,
-                                                                             inclusive="neither")
-        return df_stats_copy
-
     def _determine_variability_estimator(self, variability_estimator: str):
         if variability_estimator.lower() == "auto":
             return "std" if self.n_sample_size > 10 else "range"
@@ -279,8 +282,7 @@ class SChart(RChart):
                          variability_estimator="std")
 
 
-# TODO combine with PCA
-#  - implement for sample_size > 1
+#  TODO implement for sample_size > 1
 class MEWMAChart(BaseControlChart, ControlChartPlotMixin):
     """
     - Note, that this is a phase 2 procedure. However, the process target/mean, mu, can reasonably
@@ -294,7 +296,7 @@ class MEWMAChart(BaseControlChart, ControlChartPlotMixin):
     Based on Montgomery, 2013, chapter 11.4, p. 524.
     """
 
-    def __init__(self, n_sample_size: int = 1, lambda_: float = 0.1, sigma: Optional[np.array] = None):
+    def __init__(self, n_sample_size: int = 1, lambda_: float = 0.1, sigma: Optional[np.ndarray] = None):
         super().__init__(n_sample_size=n_sample_size)
         assert self.n_sample_size > 0, "Sample/subgroup size must be greater than 0."
         assert 0.0 < lambda_ <= 1.0, "Bad lambda value given. Lambda must be in the interval 0 < lambda <= 1."
@@ -322,7 +324,7 @@ class MEWMAChart(BaseControlChart, ControlChartPlotMixin):
         T2 = []
         df_phase2_copy = np.array(df_phase2_copy)
         for i in range(1, df_phase2_copy.shape[0] + 1):
-            x_i = df_phase2_copy[i - 1, ]
+            x_i = df_phase2_copy[i - 1,]
             z_i = self.lambda_ * x_i + (1 - self.lambda_) * Z[i - 1]  # eq: 11.30
             Z.append(z_i)
             sigma_i = (self.lambda_ / (2 - self.lambda_)) * (
@@ -350,7 +352,7 @@ class MEWMAChart(BaseControlChart, ControlChartPlotMixin):
         self.df_PCs = pd.DataFrame(df_transformed, columns=[f"PC{i}" for i in range(1, n_components + 1)])
         self.fit(self.df_PCs)
 
-    def compute_delta(self, mu_shifted: np.array):
+    def compute_delta(self, mu_shifted: np.ndarray):
         """
         This method computes the quantity, delta, of equation 11.33 of Montgomery called the non-centrality parameter.
         It is a measure of a given shift size given by a p x 1 vector, mu, of standard deviations. E.g. for a 6-dimensional
@@ -371,10 +373,11 @@ class MEWMAChart(BaseControlChart, ControlChartPlotMixin):
         """
         Plots the obtained phase 2 statistics for the multivariate EWMA procedure. Requires fit() to have been run first.
         """
+        assert self.is_fitted, "No stats to plot. Run fit() first on suitable phase 2 data"
         self._plot_single_phase(self.df_phase2_stats)
-        plt.title(f"Phase 2 MEWMA-chart")
-        plt.ylabel(r"Sample Hotelling $T^2$")
-        plt.xlabel("Sample")
+        plt.title(fr"Phase 2 MEWMA-chart, $\lambda = {self.lambda_}$")
+        plt.ylabel(r"Sample Hotelling $T^2_i$")
+        plt.xlabel("Sample [i]")
 
 
 class HotellingTSquaredChart(MEWMAChart):
@@ -384,13 +387,86 @@ class HotellingTSquaredChart(MEWMAChart):
     lambda ensures that only the latest sample is used in the calculation of the T^2 statistic.
     """
 
-    def __init__(self, n_sample_size: int = 1, sigma: Optional[np.array] = None):
+    def __init__(self, n_sample_size: int = 1, sigma: Optional[np.ndarray] = None):
         super().__init__(n_sample_size=n_sample_size, lambda_=1, sigma=sigma)
 
 
+# TODO:
+#  - adapt to sample size > 1
+#  - estimating mu and sigma from given data - good practice?
 class EWMAChart(BaseControlChart, ControlChartPlotMixin):
-    def __init__(self):
-        pass
+    """The exponentially weighted moving average procedure. Useful for taking autocorrelation into account and better
+    than Shewhart type charts at detecting smaller shifts. The EWMA chart is typically used for individual observations,
+     i.e. sample sizes = 1.
+    A useful combination is an EWMA chart
+    of the observations and a Shewhart chart of the residuals from an appropriate time-series model.
+
+    """
+
+    def __init__(self,
+                 n_sample_size: int = 1,
+                 L_control_limit_width: float = 2.7,
+                 lambda_: float = 0.1,
+                 mu_process_target: Optional[float] = None,
+                 sigma: Optional[float] = None):
+        super().__init__(n_sample_size=n_sample_size)
+        assert self.n_sample_size > 0, "Sample/subgroup size must be greater than 0."
+        assert 0.0 < lambda_ <= 1.0, "Bad lambda value given. Lambda must be in the interval 0 < lambda <= 1."
+        self.input_name = None
+        self.stat_name = "Z"
+        self.df_phase2_stats = None
+        self.L_control_limit_width = L_control_limit_width
+        self.mu_process_target = mu_process_target
+        self.lambda_ = lambda_
+        self.sigma = sigma
+
+    def fit(self, df_phase2: pd.DataFrame, *args, **kwargs):
+        df_phase2_copy = df_phase2.copy()
+        df_phase2_copy = get_df_with_sample_id(df_phase2_copy, n_sample_size=self.n_sample_size)
+        self.input_name = df_phase2_copy.columns.values[1]
+
+        if self.lambda_ is None:
+            self.lambda_ = np.mean(
+                df_phase2_copy[self.input_name])  # estimated process standard deviation, if not given
+
+        if self.sigma is not None:
+            assert self.sigma > 0, "Process standard deviation, \"sigma\", must be a positive, real, number > 0."
+        else:
+            self.sigma = np.std(df_phase2_copy[self.input_name],
+                                ddof=1)  # estimated process standard deviation, if not given
+
+        Z = [self.mu_process_target]
+        sigma_individual = []
+        for i in range(1, df_phase2_copy.shape[0] + 1):
+            x_i = df_phase2_copy[self.input_name].iloc[i - 1]
+            z_i = self.lambda_ * x_i + (1 - self.lambda_) * Z[i - 1]  # eq: 9.22
+            Z.append(z_i)
+            sigma_i = np.sqrt(
+                self.lambda_ / (2 - self.lambda_) * (1 - (1 - self.lambda_) ** (2 * i)))  # eq: 9.24 & 9.25
+            sigma_individual.append(sigma_i)
+
+        sigma_individual = np.array(sigma_individual)
+        self.LCL = self.mu_process_target - self.L_control_limit_width * self.sigma * sigma_individual
+        self.UCL = self.mu_process_target + self.L_control_limit_width * self.sigma * sigma_individual
+        self.center_line = self.mu_process_target
+
+        Z.pop(0)
+        self.df_phase2_stats = df_phase2.copy()
+        self.df_phase2_stats[self.stat_name] = Z
+        self.df_phase2_stats = self._collect_results_df(self.df_phase2_stats)
+
+        self.is_fitted = True
+        return self
+
+    def plot_phase2(self):
+        """
+        Plots the obtained phase 2 statistics for the EWMA procedure. Requires fit() to have been run first.
+        """
+        assert self.is_fitted, "No stats to plot. Run fit() first on suitable phase 2 data"
+        self._plot_single_phase(self.df_phase2_stats)
+        plt.title(fr"Phase 2 EWMA-chart, $\lambda = {self.lambda_}$, L = {self.L_control_limit_width}")
+        plt.ylabel(r"Sample EWMA value [$Z_i$]")
+        plt.xlabel("Sample [i]")
 
 
 def cusum():
@@ -406,4 +482,8 @@ def changepoint_model():
     See chapter 10.8, p. 490 og Montgomery
     :return:
     """
+    pass
+
+
+def plot_ACF():
     pass

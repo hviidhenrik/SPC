@@ -242,3 +242,33 @@ def test_MEWMA_compute_delta():
     delta_output = np.round(chart.compute_delta(np.array([1] * 6)), 2)
     delta_expected = 1.86
     assert delta_output == delta_expected
+
+
+def test_EWMA_fit_correct_values():
+    """
+    This test is based on the data and results of example 9.2 of Montgomery, p. 435-436.
+    """
+    df_phase2_input = pd.DataFrame(
+        {"x1": [9.45, 7.99, 9.29, 11.66, 12.16, 10.18, 8.04, 11.46, 9.2, 10.34, 9.03, 11.47, 10.51, 9.4, 10.08,
+                9.37, 10.62, 10.31, 8.52, 10.84, 10.9, 9.33, 12.29, 11.5, 10.6, 11.08, 10.38, 11.62, 11.31, 10.52]})
+    Z_expected = [9.94, 9.75, 9.7, 9.9, 10.13, 10.13, 9.92, 10.08, 9.99, 10.02, 9.92, 10.08, 10.12, 10.05, 10.05, 9.98,
+                  10.05, 10.07,
+                  9.92, 10.01, 10.1, 10.02, 10.25, 10.37, 10.4, 10.47, 10.46, 10.57, 10.65, 10.63]
+    LCL_expected = [9.73, 9.64, 9.58, 9.53, 9.5, 9.48, 9.46, 9.44, 9.43, 9.42, 9.41, 9.41, 9.4, 9.4, 9.39, 9.39, 9.39,
+                    9.39, 9.39, 9.39, 9.38, 9.38, 9.38, 9.38, 9.38, 9.38, 9.38, 9.38, 9.38, 9.38]
+    UCL_expected = [10.27, 10.36, 10.42, 10.47, 10.5, 10.52, 10.54, 10.56, 10.57, 10.58, 10.59, 10.59, 10.6, 10.6,
+                    10.61, 10.61, 10.61, 10.61, 10.61, 10.61, 10.62, 10.62, 10.62, 10.62, 10.62, 10.62, 10.62, 10.62,
+                    10.62, 10.62]
+    outside_CL_expected = [False, False, False, False, False, False, False, False, False, False, False, False, False,
+                           False, False, False, False, False, False, False, False, False, False, False, False, False,
+                           False, False, True, True]
+
+    chart = EWMAChart(lambda_=0.1, mu_process_target=10, sigma=1).fit(df_phase2=df_phase2_input)
+    Z_output = np.array(chart.df_phase2_stats["Z"]).round(2).tolist()
+    LCL_output = np.array(chart.df_phase2_stats["LCL"]).round(2).tolist()
+    UCL_output = np.array(chart.df_phase2_stats["UCL"]).round(2).tolist()
+    outside_CL_output = np.array(chart.df_phase2_stats["outside_CL"]).tolist()
+    assert Z_output == Z_expected
+    assert LCL_output == LCL_expected
+    assert UCL_output == UCL_expected
+    assert outside_CL_output == outside_CL_expected
