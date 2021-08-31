@@ -283,6 +283,7 @@ class SChart(RChart):
 
 
 #  TODO implement for sample_size > 1
+#    - implement MEWMA on residual PC's control chart
 class MEWMAChart(BaseControlChart, ControlChartPlotMixin):
     """
     - Note, that this is a phase 2 procedure. However, the process target/mean, mu, can reasonably
@@ -307,7 +308,7 @@ class MEWMAChart(BaseControlChart, ControlChartPlotMixin):
         self.sigma = sigma
         self.df_PCs = None
 
-    def fit(self, df_phase2: pd.DataFrame, *args, **kwargs):
+    def fit(self, df_phase2: pd.DataFrame, verbose: bool = False, *args, **kwargs):
         self.input_dim = df_phase2.shape[1]
         assert self.input_dim > 1, "Multivariate method: number of features must be more than 1. Use the EWMA procedure " \
                                    "for univariate data."
@@ -323,7 +324,10 @@ class MEWMAChart(BaseControlChart, ControlChartPlotMixin):
         Z = [np.zeros(shape=self.input_dim)]
         T2 = []
         df_phase2_copy = np.array(df_phase2_copy)
-        for i in range(1, df_phase2_copy.shape[0] + 1):
+        N_rows = df_phase2_copy.shape[0]
+        for i in range(1, N_rows + 1):
+            if verbose and i % np.ceil(0.1*N_rows) == 0:
+                print(f"Progress: {100*i/(df_phase2_copy.shape[0] + 1):.2f} %")
             x_i = df_phase2_copy[i - 1,]
             z_i = self.lambda_ * x_i + (1 - self.lambda_) * Z[i - 1]  # eq: 11.30
             Z.append(z_i)
@@ -332,25 +336,30 @@ class MEWMAChart(BaseControlChart, ControlChartPlotMixin):
             T2.append(multiply_matrices(z_i.transpose(), np.linalg.inv(sigma_i), z_i))  # eq: 11.31
 
         Z.pop(0)
-        df_Z = pd.DataFrame(Z, columns=[f"Z{i}" for i in range(1, self.input_dim + 1)])
+        df_Z = pd.DataFrame(Z, columns=[f"Z{i}" for i in range(1, self.input_dim + 1)], index=df_phase2.index)
         self.df_phase2_stats = df_phase2.copy()
         self.df_phase2_stats = pd.concat([self.df_phase2_stats, df_Z], axis=1)
         self.df_phase2_stats[self.stat_name] = T2
         self.is_fitted = True
         return self
 
-    def fit_on_PCs(self, df_phase2: pd.DataFrame, n_components: int = None, PC_variance_explained_min: float = 0.9,
-                   *args, **kwargs):
-        assert n_components > 1, "Multivariate method: number of features must be more than 1. " \
-                                 "Use the EWMA procedure for univariate data."
-        df_transformed, pca, _ = standardize_and_PCA(df_phase2, n_components=n_components)
+    def fit_on_PCs(self, df_phase1: pd.DataFrame, df_phase2: pd.DataFrame,
+                   n_components: int = None, PC_variance_explained_min: float = 0.9,
+                   verbose: bool = False, *args, **kwargs):
+        df_transformed, pca, scaler = standardize_and_PCA(df_phase1, n_components=n_components)
         if n_components is None:
             cumulative_variances = np.cumsum(pca.explained_variance_ratio_)
-            n_components = np.where(cumulative_variances < PC_variance_explained_min)[0][0] + 2
-        df_transformed = df_transformed[:, :n_components]
+            n_components = np.where(cumulative_variances > PC_variance_explained_min)[0][0] + 1
+        assert n_components > 1, "Multivariate method: number of features must be more than 1. " \
+                                 "Use the EWMA procedure for univariate data."
+        if verbose:
+            print(f"Number of PC's used: {n_components}")
+        df_phase2_transformed = apply_standardize_and_PCA(df_phase2, scaler=scaler, pca=pca)
+        df_phase2_transformed = df_phase2_transformed[:, :n_components]
+        # TODO try to estimate sigma on phase 1 data
         self.sigma = None  # the standardization and PCA changes the original correlations, so we can't use those
-        self.df_PCs = pd.DataFrame(df_transformed, columns=[f"PC{i}" for i in range(1, n_components + 1)])
-        self.fit(self.df_PCs)
+        self.df_PCs = pd.DataFrame(df_phase2_transformed, columns=[f"PC{i}" for i in range(1, n_components + 1)])
+        self.fit(self.df_PCs, verbose=verbose)
 
     def compute_delta(self, mu_shifted: np.ndarray):
         """
@@ -435,6 +444,10 @@ class EWMAChart(BaseControlChart, ControlChartPlotMixin):
             self.sigma = np.std(df_phase2_copy[self.input_name],
                                 ddof=1)  # estimated process standard deviation, if not given
 
+        if self.mu_process_target is None:
+            self.mu_process_target = np.mean(
+                df_phase2_copy[self.input_name])  # estimated process mean, if not given
+
         Z = [self.mu_process_target]
         sigma_individual = []
         for i in range(1, df_phase2_copy.shape[0] + 1):
@@ -474,6 +487,10 @@ def cusum():
 
 
 def pareto_chart():
+    """
+    See chapter 5.4, p. 208 of Montgomery
+    :return:
+    """
     pass
 
 
@@ -486,4 +503,8 @@ def changepoint_model():
 
 
 def plot_ACF():
+    pass
+
+
+def plot_contributions():
     pass

@@ -47,6 +47,12 @@ def standardize_and_PCA(df, n_components: Optional[int] = None):
     return df_transformed, pca, scaler
 
 
+def apply_standardize_and_PCA(df, scaler, pca):
+    df_transformed = scaler.transform(df)
+    df_transformed = pca.transform(df_transformed)
+    return df_transformed
+
+
 class ControlChartPlotMixin:
 
     def __init__(self):
