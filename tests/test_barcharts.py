@@ -2,7 +2,7 @@
 Unit tests go here
 """
 import pytest
-from pandas._testing import assert_frame_equal
+from pandas._testing import assert_frame_equal, assert_series_equal
 
 from phdspc.core import *
 
@@ -272,3 +272,39 @@ def test_EWMA_fit_correct_values():
     assert LCL_output == LCL_expected
     assert UCL_output == UCL_expected
     assert outside_CL_output == outside_CL_expected
+
+
+def test_PCAModelChart_fit_correct_values():
+    """
+    This test also implicitly tests HotellingT2Chart, as the PCAModelChart uses the fit() method of the former
+    to do the T^2 calculations on the principal components.
+    :return:
+    """
+    df_phase1 = pd.DataFrame({"x1": [1, 2, 3, 1, 2, 3, 5, 4, 3, 5, 6, 7, 5, 3, 1, 2, 3, 2, 1, 3, 2],
+                              "x2": [3, 4, 3, 7, 2, 8, 5, 7, 3, 5, 6, 6, 5, 6, 1, 3, 2, 1, 4, 7, 8],
+                              "x3": [13, 24, 33, 37, 22, 18, 25, 37, 23, 35, 36, 16, 25, 26, 11, 33, 22, 11, 24, 27,
+                                     28],
+                              })
+
+    chart = PCAModelChart(n_sample_size=1, alpha=0.05).fit(df_phase1=df_phase1, n_components_to_retain=2)
+
+    output_T2 = chart.df_phase1_stats["T2"].round(3)
+    output_Q = chart.df_phase1_stats["Q"].round(3)
+    output_T2_UCL = chart.df_phase1_stats["UCL_T2"].mean().round(3)
+    output_Q_UCL = chart.df_phase1_stats["UCL_Q"].mean().round(3)
+
+    expected_T2_UCL = 5.393
+    expected_Q_UCL = 1.852
+    expected_T2 = pd.Series(
+        [2.148, 0.375, 0.239, 5.399, 0.952, 0.172, 1.351, 2.283, 0.285, 1.244, 2.946, 7.842, 1.351, 0.173,
+         4.095, 1.081, 0.723, 3.781, 1.400, 0.537, 1.625])
+    expected_Q = pd.Series(
+        [0.420, 0.001, 1.260, 0.056, 0.256, 2.908, 0.016, 0.037, 0.144, 0.757, 0.554, 0.359, 0.016, 0.181,
+         0.012, 0.961, 0.420, 0.001, 0.030, 0.482, 1.220])
+    expected_T2.name = "T2"
+    expected_Q.name = "Q"
+    assert_series_equal(output_T2, expected_T2)
+    assert_series_equal(output_Q, expected_Q)
+    assert output_T2_UCL == expected_T2_UCL
+    assert output_Q_UCL == expected_Q_UCL
+
