@@ -8,6 +8,8 @@ import sklearn.decomposition
 import sklearn.preprocessing
 from statsmodels.tsa.stattools import acf, pacf
 
+from definitions import *
+
 
 def vprint(verbose: Union[bool, int], str_to_print: str, **kwargs):
     if verbose:
@@ -131,11 +133,11 @@ class ControlChartPlotMixin:
 
     @staticmethod
     def _plot_scalar_or_array(x: Union[float, np.ndarray, List[float]],
-                              ax: matplotlib.axes._subplots.Axes):
+                              ax: matplotlib.axes._subplots.Axes, color="red"):
         if isinstance(x, (np.ndarray, pd.Series, list)):
-            ax.plot(x, color="red", linestyle="dashed")  # , label="Control limits")
+            ax.plot(x, color=color, linestyle="dashed")
         else:
-            ax.axhline(x, color="red", linestyle="dashed", label="Control limits")
+            ax.axhline(x, color=color, linestyle="dashed", label="Control limits")
 
     def _plot_single_phase_univariate(self, df, y_limit_offsets=(0.95, 1.05)):
         fig, ax = plt.subplots(1, 1)
@@ -147,10 +149,10 @@ class ControlChartPlotMixin:
             ax.axhline(self.center_line, color="blue", alpha=0.7)
             legend_labels.append("Center line")
         if self.UCL is not None:
-            self._plot_scalar_or_array(self.UCL, ax)
+            self._plot_scalar_or_array(self.UCL, ax, color=UCL_color)
             legend_labels.append("Control limit")
         if self.LCL is not None:
-            self._plot_scalar_or_array(self.LCL, ax)
+            self._plot_scalar_or_array(self.LCL, ax, color=LCL_color)
 
         plt.legend(legend_labels, ncol=len(legend_labels))
         y_limits = ax.get_ylim()
@@ -175,10 +177,10 @@ class ControlChartPlotMixin:
                 axs[i].axhline(self.center_line, color="blue", alpha=0.7)
                 legend_labels.append("Center line")
             if UCL_to_plot is not None:
-                self._plot_scalar_or_array(UCL_to_plot, axs[i])
+                self._plot_scalar_or_array(UCL_to_plot, axs[i], color=UCL_color)
                 legend_labels.append("Control limit")
             if LCL_to_plot is not None:
-                self._plot_scalar_or_array(LCL_to_plot, axs[i])
+                self._plot_scalar_or_array(LCL_to_plot, axs[i], color=LCL_color)
             axs[i].legend(legend_labels, ncol=len(legend_labels))
             y_limits = axs[i].get_ylim()
             axs[i].set_ylim(y_limits[0] * y_limit_offsets[0], y_limits[1] * y_limit_offsets[1])
@@ -188,31 +190,75 @@ class ControlChartPlotMixin:
             axs[i].set_title(title)
         return fig, axs
 
-    def _plot_two_phases(self, df_phase1: pd.DataFrame, df_phase2: pd.DataFrame, y_limit_offsets=(0.95, 1.05)):
+    def _plot_two_phases(self, df_phase1_results: pd.DataFrame, df_phase2_results: pd.DataFrame,
+                         y_limit_offsets=(0.95, 1.05)):
         fig, ax = plt.subplots(1, 1)
-        df = pd.concat([df_phase1, df_phase2])
+        df = pd.concat([df_phase1_results, df_phase2_results])
         df["phase"] = 1
-        df["phase"].iloc[len(df_phase1):] = 2
+        df["phase"].iloc[len(df_phase1_results):] = 2
         df = df.reset_index()
+        df_outside_CL = df.loc[df["outside_CL"], self.stat_name]
+
+        LCL_to_plot = df[f"LCL"] if f"LCL" in df.columns else None
+        UCL_to_plot = df[f"UCL"]
 
         legend_labels = ["Phase 1", "Phase 2"]
         plt.plot(df[self.stat_name][df["phase"] == 1],
-                 linestyle="-", marker="o", color="green")
+                 linestyle="-", marker="", color="black", zorder=1)
         plt.plot(df[self.stat_name][df["phase"] == 2],
-                 linestyle="-", marker="o", color="orange")
+                 linestyle="-", marker="", color="black", zorder=1)
         if self.center_line is not None:
             ax.axhline(self.center_line, color="blue", alpha=0.7)
             legend_labels.append("Center line")
-        if self.UCL is not None:
-            self._plot_scalar_or_array(self.UCL, ax)
+        if UCL_to_plot is not None:
+            self._plot_scalar_or_array(UCL_to_plot, ax, color=UCL_color)
             legend_labels.append("Control limit")
-        if self.LCL is not None:
-            self._plot_scalar_or_array(self.LCL, ax)
+        if LCL_to_plot is not None:
+            self._plot_scalar_or_array(LCL_to_plot, ax, color=LCL_color)
 
+        ax.scatter(df_outside_CL.index.values, df_outside_CL, marker="o", color="red", zorder=2)
         plt.legend(legend_labels, ncol=len(legend_labels))
         y_limits = ax.get_ylim()
         ax.set_ylim(y_limits[0] * y_limit_offsets[0], y_limits[1] * y_limit_offsets[1])
         return fig
+
+    def _plot_two_phases_multivariate(self, df_phase1_results: pd.DataFrame, df_phase2_results: pd.DataFrame,
+                                      y_limit_offsets=(0.95, 1.05), gridsize: Tuple[int] = None,
+                                      subplot_titles: List[str] = None,
+                                      y_labels: List[str] = None):
+
+        df = pd.concat([df_phase1_results, df_phase2_results])
+        df["phase"] = 1
+        df["phase"].iloc[len(df_phase1_results):] = 2
+        df = df.reset_index()
+
+        number_of_plots = len(self.stat_name)
+        gridsize = (number_of_plots, 1) if gridsize is None else gridsize
+        fig, axs = plt.subplots(*gridsize, sharex="all")
+        for i in range(number_of_plots):
+            stat_to_plot = self.stat_name[i]
+            LCL_to_plot = df[f"LCL_{stat_to_plot}"] if f"LCL_{stat_to_plot}" in df.columns else None
+            UCL_to_plot = df[f"UCL_{stat_to_plot}"]
+            df_outside_CL = df.loc[df[f"outside_CL_{stat_to_plot}"], stat_to_plot]
+            axs[i].plot(df[stat_to_plot][df["phase"] == 1],
+                        linestyle="-", marker="", color="black", zorder=1, label="Phase 1")
+            axs[i].plot(df[stat_to_plot][df["phase"] == 2],
+                        linestyle="-", marker="", color="black", zorder=1, label="Phase 2")
+            axs[i].scatter(df_outside_CL.index.values, df_outside_CL, marker="o", color="red", zorder=2)
+            if self.center_line is not None:
+                axs[i].axhline(self.center_line, color="blue", alpha=0.7)
+            if UCL_to_plot is not None:
+                self._plot_scalar_or_array(UCL_to_plot, axs[i], color=UCL_color)
+            if LCL_to_plot is not None:
+                self._plot_scalar_or_array(LCL_to_plot, axs[i], color=LCL_color)
+            axs[i].legend(ncol=2)
+            y_limits = axs[i].get_ylim()
+            axs[i].set_ylim(y_limits[0] * y_limit_offsets[0], y_limits[1] * y_limit_offsets[1])
+            title = stat_to_plot if subplot_titles is None else subplot_titles[i]
+            y_label = "" if y_labels is None else y_labels[i]
+            axs[i].set_ylabel(y_label)
+            axs[i].set_title(title)
+        return fig, axs
 
 
 def plot_df_acf(df, gridsize: Tuple[int, int] = None, nlags: int = 50, corr_type="acf"):
