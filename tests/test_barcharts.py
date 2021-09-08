@@ -1,6 +1,7 @@
 """
 Unit tests go here
 """
+import pandas as pd
 import pytest
 from pandas._testing import assert_frame_equal, assert_series_equal
 
@@ -307,4 +308,18 @@ def test_PCAModelChart_fit_correct_values():
     assert_series_equal(output_Q, expected_Q)
     assert output_T2_UCL == expected_T2_UCL
     assert output_Q_UCL == expected_Q_UCL
+
+
+def test_compute_T2_contributions():
+    df_phase1 = pd.DataFrame({"x1": [1, 2, 3, 1, 2, 3, 5, 4, 3, 5, 6, 7, 5, 3, 1, 2, 3, 2, 1, 3, 2],
+                              "x2": [3, 4, 3, 7, 2, 8, 5, 7, 3, 5, 6, 6, 5, 6, 1, 3, 2, 1, 4, 7, 8],
+                              "x3": [13, 24, 33, 37, 22, 18, 25, 37, 23, 35, 36, 16, 25, 26, 11, 33, 22, 11, 24, 27,
+                                     28],
+                              })
+    df_expected = pd.DataFrame(dict(PC1=[2.139, 0.174, 0.006],
+                                    PC2=[0.01, 0.2, 0.233],
+                                    PC3=[0.832, 0.002, 2.497]))
+    chart = PCAModelChart(n_sample_size=1).fit(df_phase1=df_phase1, n_components_to_retain=3, verbose=True)
+    df_output = chart.df_contributions.iloc[0:3].round(3)
+    assert_frame_equal(df_output, df_expected, check_dtype=False)
 

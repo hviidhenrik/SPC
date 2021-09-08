@@ -405,15 +405,17 @@ class HotellingT2Chart(BaseControlChart, ControlChartPlotMixin):
         self.input_dim = None
         self.sigma = None
         self.sigma_inverse = None
-        self.xbar = None
+        self.x_bar = None
         self.m_samples = None
         self.df_phase1_stats = None
+        self.df_contributions = None
 
-    def fit(self, df_phase1: pd.DataFrame, verbose=False, *args, **kwargs):
+    def fit(self, df_phase1: pd.DataFrame, compute_contributions: bool = True,
+            verbose=False, *args, **kwargs):
         self.m_samples = df_phase1.shape[0]
         self.input_dim = df_phase1.shape[1]
         x = np.array(df_phase1)
-        self.xbar = np.mean(x, axis=0)
+        self.x_bar = np.mean(x, axis=0)
         self.sigma = np.cov(x.T, ddof=1)  # n0te: should the S_5 estimator be used instead? Are they equivalent?
         self.sigma_inverse = np.linalg.inv(self.sigma)
         T2 = []
@@ -425,7 +427,25 @@ class HotellingT2Chart(BaseControlChart, ControlChartPlotMixin):
                                                  cumulated_prop_outside_CL=np.cumsum(
                                                      1 * (T2 > self.UCL)) / self.m_samples))
         self.is_fitted = True
+
+        if compute_contributions and self.input_dim > 2:
+            # compute contributions by removing the k'th variable, to see how much it contributes to the T^2 value of a sample
+            contributions = self._compute_T2_contributions(T2, x)
+            self.df_contributions = pd.DataFrame(contributions, columns=df_phase1.columns, index=df_phase1.index)
+
         return self
+
+    def _compute_T2_contributions(self, T2, x):
+        contributions = np.zeros_like(x, dtype=float)
+        for k in range(self.input_dim):
+            x_k = np.delete(x, k, axis=1)
+            x_bar_k = np.delete(self.x_bar, k)
+            sigma_inverse_k = np.delete(np.delete(self.sigma, k, axis=0), k, axis=1)
+            sigma_inverse_k = np.linalg.inv(sigma_inverse_k)
+            for i in range(x_k.shape[0]):
+                contributions[i, k] = T2[i] - self._compute_T2_value_given_xbar_and_sigma_inv(x_k[i], x_bar_k,
+                                                                                              sigma_inverse_k)
+        return contributions
 
     def predict(self, df_phase2: pd.DataFrame):
         """
@@ -440,9 +460,15 @@ class HotellingT2Chart(BaseControlChart, ControlChartPlotMixin):
         return pd.DataFrame(dict(T2=T2, UCL=UCL, outside_CL=T2 > UCL,
                                  cumulated_prop_outside_CL=np.cumsum(1 * (T2 > UCL)) / self.m_samples))
 
-    def _compute_T2_value(self, x: pd.Series):
-        assert x.shape == self.xbar.shape, f"The shape of x ({x.shape}) must be the same as xbar: {self.xbar.shape}"
-        return multiply_matrices((x - self.xbar).T, self.sigma_inverse, (x - self.xbar))
+    def _compute_T2_value(self, x: np.ndarray):
+        assert x.shape == self.x_bar.shape, f"The shape of x ({x.shape}) must be the same as x_bar: {self.x_bar.shape}"
+        return multiply_matrices((x - self.x_bar).T, self.sigma_inverse, (x - self.x_bar))
+
+    @staticmethod
+    def _compute_T2_value_given_xbar_and_sigma_inv(x: np.ndarray, x_bar: np.ndarray = None,
+                                                   sigma_inverse: np.ndarray = None):
+        assert x.shape == x_bar.shape, f"The shape of x ({x.shape}) must be the same as x_bar: {x_bar.shape}"
+        return multiply_matrices((x - x_bar).T, sigma_inverse, (x - x_bar))
 
     def _compute_T2_UCL(self, phase: Union[int, str]):
         p, m, n = self.input_dim, self.m_samples, self.n_sample_size
@@ -502,24 +528,31 @@ class PCAModelChart(HotellingT2Chart):
         self.PCA = None
         self.UCL_Q = None
         self.n_components_to_retain = None
+        self.loadings = None
+        self.scores = None
+        self.df_T2_contributions = None
+        self.df_Q_contributions = None
 
     def fit(self,
             df_phase1: pd.DataFrame,
             n_components_to_retain: int = None,
             PC_variance_explained_min: float = 0.9,
-            verbose=False, *args, **kwargs):
+            compute_contributions: bool = True,
+            verbose=False,
+            *args, **kwargs):
         self.n_components_to_retain = n_components_to_retain
         self.m_samples = df_phase1.shape[0]
         df_transformed, self.PCA, self.scaler = standardize_and_PCA(df_phase1)
         self.stat_name = (self.stat_name, "Q")
-        if n_components_to_retain is None:
+        if self.n_components_to_retain is None:
             cumulative_variances = np.cumsum(self.PCA.explained_variance_ratio_)
-            n_components_to_retain = np.where(cumulative_variances > PC_variance_explained_min)[0][0] + 1
-            vprint(verbose, f"PC's used: {n_components_to_retain}\nData variation explained: "
-                            f"{100 * cumulative_variances[n_components_to_retain - 1]:.2f} %")
+            self.n_components_to_retain = np.where(cumulative_variances > PC_variance_explained_min)[0][0] + 1
+            vprint(verbose, f"PC's used: {self.n_components_to_retain}\nData variation explained: "
+                            f"{100 * cumulative_variances[self.n_components_to_retain - 1]:.2f} %")
         # call parent class to estimate T^2 statistics
-        df_transformed = df_transformed[:, :n_components_to_retain]
-        super().fit(df_phase1=df_transformed)
+        df_transformed = df_transformed[:, :self.n_components_to_retain]
+        PC_names = [f"PC{i}" for i in range(1, df_transformed.shape[1] + 1)]
+        super().fit(df_phase1=pd.DataFrame(df_transformed, columns=PC_names, index=df_phase1.index))
         Q = self._compute_Q_values(df_phase1)
         self.df_phase1_stats["Q"] = Q
         self.UCL_Q = self._compute_Q_UCL(Q)
@@ -529,6 +562,23 @@ class PCAModelChart(HotellingT2Chart):
         self.df_phase1_stats = self.df_phase1_stats.rename(columns={"UCL": "UCL_T2", "outside_CL": "outside_CL_T2",
                                                                     "cumulated_prop_outside_CL": "cumulated_prop_outside_CL_T2"})
         self.df_phase1_stats = pd.concat([self.df_phase1_stats, df_Q_stats], axis=1)
+
+        if compute_contributions:
+            T2_contributions = np.zeros_like(df_transformed)
+            Q_contributions = np.zeros_like(df_transformed)
+            A_eigenvals = np.diag(self.PCA.explained_variance_[:self.n_components_to_retain])
+            C_loadings = np.array(self.loadings)
+            X = self.scaler.transform(df_phase1)
+            X_means = np.mean(X, axis=0)
+            T2_matrix_scaling = multiply_matrices(C_loadings, np.linalg.inv(np.sqrt(A_eigenvals)), C_loadings.T)
+            Q_matrix_scaling = np.eye(self.input_dim) - multiply_matrices(C_loadings, C_loadings.T)
+            for i in range(X.shape[0]):
+                residual = (X[i] - X_means).T
+                T2_contributions[i] = multiply_matrices(residual, T2_matrix_scaling)
+                Q_contributions[i] = multiply_matrices(residual, Q_matrix_scaling)
+            self.df_T2_contributions = pd.DataFrame(T2_contributions, columns=df_phase1.columns, index=df_phase1.index)
+            self.df_Q_contributions = pd.DataFrame(Q_contributions, columns=df_phase1.columns, index=df_phase1.index)
+
         return self
 
     def predict(self, df_phase2: pd.DataFrame):
@@ -547,10 +597,10 @@ class PCAModelChart(HotellingT2Chart):
 
     def _compute_Q_values(self, df_raw: pd.DataFrame):
         # n0te: most of the next bit is from Max's code. Original source?
-        df_scores = apply_standardize_and_PCA(df_raw, self.scaler, self.PCA)[:, :self.n_components_to_retain]
-        df_loadings = self.PCA.components_.T[:, :self.n_components_to_retain]  # loadings from phase 1 data
+        self.scores = apply_standardize_and_PCA(df_raw, self.scaler, self.PCA)[:, :self.n_components_to_retain]
+        self.loadings = self.PCA.components_.T[:, :self.n_components_to_retain]  # loadings from phase 1 data
         X = self.scaler.transform(df_raw)
-        Xhat = multiply_matrices(df_scores, df_loadings.T)
+        Xhat = multiply_matrices(self.scores, self.loadings.T)
         Q = np.sum((X - Xhat) ** 2, axis=1)  # n0te: squared prediction error or E matrix in the slides. Is this right?
         return Q
 

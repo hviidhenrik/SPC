@@ -8,7 +8,7 @@ import sklearn.decomposition
 import sklearn.preprocessing
 from statsmodels.tsa.stattools import acf, pacf
 
-from definitions import *
+from phdspc.definitions import *
 
 
 def vprint(verbose: Union[bool, int], str_to_print: str, **kwargs):
@@ -142,8 +142,12 @@ class ControlChartPlotMixin:
     def _plot_single_phase_univariate(self, df, y_limit_offsets=(0.95, 1.05)):
         fig, ax = plt.subplots(1, 1)
         df_outside_CL = df.loc[df["outside_CL"], self.stat_name]
-        ax.plot(df[self.stat_name], linestyle="-", marker="", color="black", zorder=1)
-        ax.scatter(df_outside_CL.index.values, df_outside_CL, marker="o", color="red", zorder=2)
+        N_samples = df.shape[0]
+        ax.plot(df[self.stat_name], linestyle="-", marker="", color=single_phase_line_color,
+                linewidth=get_line_width(N_samples),
+                zorder=1)
+        ax.scatter(df_outside_CL.index.values, df_outside_CL, marker="o", color="red",
+                   s=get_outside_CL_marker_size(N_samples), zorder=2)
         legend_labels = [self.stat_name]
         if self.center_line is not None:
             ax.axhline(self.center_line, color="blue", alpha=0.7)
@@ -162,6 +166,7 @@ class ControlChartPlotMixin:
     def _plot_single_phase_multivariate(self, df, y_limit_offsets=(0.95, 1.05), gridsize: Tuple[int] = None,
                                         subplot_titles: List[str] = None,
                                         y_labels: List[str] = None):
+        N_samples = df.shape[0]
         number_of_plots = len(self.stat_name)
         gridsize = (number_of_plots, 1) if gridsize is None else gridsize
         fig, axs = plt.subplots(*gridsize, sharex="all")
@@ -170,8 +175,12 @@ class ControlChartPlotMixin:
             LCL_to_plot = df[f"LCL_{stat_to_plot}"] if f"LCL_{stat_to_plot}" in df.columns else None
             UCL_to_plot = df[f"UCL_{stat_to_plot}"]
             df_outside_CL = df.loc[df[f"outside_CL_{stat_to_plot}"], stat_to_plot]
-            axs[i].plot(df[stat_to_plot], linestyle="-", marker="", color="black", zorder=1)
-            axs[i].scatter(df_outside_CL.index.values, df_outside_CL, marker="o", color="red", zorder=2)
+            axs[i].plot(df[stat_to_plot], linestyle="-", marker="", color=single_phase_line_color,
+                        linewidth=get_line_width(N_samples),
+                        zorder=1)
+            axs[i].scatter(df_outside_CL.index.values, df_outside_CL,
+                           s=get_outside_CL_marker_size(N_samples),
+                           marker="o", color="red", zorder=2)
             legend_labels = [stat_to_plot]
             if self.center_line is not None:
                 axs[i].axhline(self.center_line, color="blue", alpha=0.7)
@@ -197,6 +206,7 @@ class ControlChartPlotMixin:
         df["phase"] = 1
         df["phase"].iloc[len(df_phase1_results):] = 2
         df = df.reset_index()
+        N_samples = df.shape[0]
         df_outside_CL = df.loc[df["outside_CL"], self.stat_name]
 
         LCL_to_plot = df[f"LCL"] if f"LCL" in df.columns else None
@@ -204,9 +214,11 @@ class ControlChartPlotMixin:
 
         legend_labels = ["Phase 1", "Phase 2"]
         plt.plot(df[self.stat_name][df["phase"] == 1],
-                 linestyle="-", marker="", color="black", zorder=1)
-        plt.plot(df[self.stat_name][df["phase"] == 2],
-                 linestyle="-", marker="", color="black", zorder=1)
+                 linestyle="-", marker="", color=single_phase_line_color,
+                 linewidth=get_line_width(N_samples), zorder=1)
+        plt.plot(df[self.stat_name][df["phase"] == 2], color=single_phase_line_color,
+                 linewidth=get_line_width(N_samples),
+                 linestyle="-", marker="", zorder=1)
         if self.center_line is not None:
             ax.axhline(self.center_line, color="blue", alpha=0.7)
             legend_labels.append("Center line")
@@ -216,7 +228,9 @@ class ControlChartPlotMixin:
         if LCL_to_plot is not None:
             self._plot_scalar_or_array(LCL_to_plot, ax, color=LCL_color)
 
-        ax.scatter(df_outside_CL.index.values, df_outside_CL, marker="o", color="red", zorder=2)
+        ax.scatter(df_outside_CL.index.values, df_outside_CL,
+                   s=get_outside_CL_marker_size(N_samples),
+                   marker="o", color="red", zorder=2)
         plt.legend(legend_labels, ncol=len(legend_labels))
         y_limits = ax.get_ylim()
         ax.set_ylim(y_limits[0] * y_limit_offsets[0], y_limits[1] * y_limit_offsets[1])
@@ -231,6 +245,7 @@ class ControlChartPlotMixin:
         df["phase"] = 1
         df["phase"].iloc[len(df_phase1_results):] = 2
         df = df.reset_index()
+        N_samples = df.shape[0]
 
         number_of_plots = len(self.stat_name)
         gridsize = (number_of_plots, 1) if gridsize is None else gridsize
@@ -241,10 +256,14 @@ class ControlChartPlotMixin:
             UCL_to_plot = df[f"UCL_{stat_to_plot}"]
             df_outside_CL = df.loc[df[f"outside_CL_{stat_to_plot}"], stat_to_plot]
             axs[i].plot(df[stat_to_plot][df["phase"] == 1],
-                        linestyle="-", marker="", color="black", zorder=1, label="Phase 1")
+                        linestyle="-", marker="", color=single_phase_line_color,
+                        linewidth=get_line_width(N_samples), zorder=1, label="Phase 1")
             axs[i].plot(df[stat_to_plot][df["phase"] == 2],
-                        linestyle="-", marker="", color="black", zorder=1, label="Phase 2")
-            axs[i].scatter(df_outside_CL.index.values, df_outside_CL, marker="o", color="red", zorder=2)
+                        linestyle="-", marker="", color=single_phase_line_color,
+                        linewidth=get_line_width(N_samples), zorder=1, label="Phase 2")
+            axs[i].scatter(df_outside_CL.index.values, df_outside_CL,
+                           s=get_outside_CL_marker_size(N_samples),
+                           marker="o", color="red", zorder=2)
             if self.center_line is not None:
                 axs[i].axhline(self.center_line, color="blue", alpha=0.7)
             if UCL_to_plot is not None:
