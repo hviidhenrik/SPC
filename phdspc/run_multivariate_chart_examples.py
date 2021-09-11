@@ -19,9 +19,13 @@ df_phase2 = pd.DataFrame(dict(x1=np.random.normal(size=N, scale=0.1),
 # chart.plot_phase1()
 # plt.show()
 
+foo = df_phase1.rolling(window=3).mean()
+bar = df_phase1.resample()
 
 chart = PCAModelChart(n_sample_size=1).fit(df_phase1=df_phase1, n_components_to_retain=3, verbose=True)
 print(chart.df_contributions)
+chart.df_T2_contributions
+chart.df_Q_contributions
 # chart = HotellingT2Chart(n_sample_size=1).fit(df_phase1=df_phase1, verbose=True)
 chart.plot_phase1()
 plt.show()

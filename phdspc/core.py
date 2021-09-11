@@ -562,20 +562,10 @@ class PCAModelChart(HotellingT2Chart):
         self.df_phase1_stats = self.df_phase1_stats.rename(columns={"UCL": "UCL_T2", "outside_CL": "outside_CL_T2",
                                                                     "cumulated_prop_outside_CL": "cumulated_prop_outside_CL_T2"})
         self.df_phase1_stats = pd.concat([self.df_phase1_stats, df_Q_stats], axis=1)
+        self.df_phase1_stats.index = df_phase1.index
 
         if compute_contributions:
-            T2_contributions = np.zeros_like(df_transformed)
-            Q_contributions = np.zeros_like(df_transformed)
-            A_eigenvals = np.diag(self.PCA.explained_variance_[:self.n_components_to_retain])
-            C_loadings = np.array(self.loadings)
-            X = self.scaler.transform(df_phase1)
-            X_means = np.mean(X, axis=0)
-            T2_matrix_scaling = multiply_matrices(C_loadings, np.linalg.inv(np.sqrt(A_eigenvals)), C_loadings.T)
-            Q_matrix_scaling = np.eye(self.input_dim) - multiply_matrices(C_loadings, C_loadings.T)
-            for i in range(X.shape[0]):
-                residual = (X[i] - X_means).T
-                T2_contributions[i] = multiply_matrices(residual, T2_matrix_scaling)
-                Q_contributions[i] = multiply_matrices(residual, Q_matrix_scaling)
+            Q_contributions, T2_contributions = self._compute_contributions(df_phase1, df_transformed)
             self.df_T2_contributions = pd.DataFrame(T2_contributions, columns=df_phase1.columns, index=df_phase1.index)
             self.df_Q_contributions = pd.DataFrame(Q_contributions, columns=df_phase1.columns, index=df_phase1.index)
 
@@ -593,7 +583,25 @@ class PCAModelChart(HotellingT2Chart):
         df_phase2_stats = df_phase2_stats.rename(columns={"UCL": "UCL_T2",
                                                           "outside_CL": "outside_CL_T2",
                                                           "cumulated_prop_outside_CL": "cumulated_prop_outside_CL_T2"})
-        return pd.concat([df_phase2_stats, df_Q_stats], axis=1)
+        df_phase2_stats = pd.concat([df_phase2_stats, df_Q_stats], axis=1)
+        df_phase2_stats.index = df_phase2.index
+        return df_phase2_stats
+
+    def _compute_contributions(self, df_phase1, df_transformed):
+        input_dim = df_phase1.shape[1]
+        T2_contributions = np.zeros_like(df_phase1, dtype=float)
+        Q_contributions = np.zeros_like(df_phase1, dtype=float)
+        A_eigenvals = np.diag(self.PCA.explained_variance_[:self.n_components_to_retain])
+        C_loadings = np.array(self.loadings)
+        X = self.scaler.transform(df_phase1)
+        X_means = np.mean(X, axis=0)
+        T2_matrix_scaling = multiply_matrices(C_loadings, np.linalg.inv(np.sqrt(A_eigenvals)), C_loadings.T)  # p x p
+        Q_matrix_scaling = np.eye(input_dim) - multiply_matrices(C_loadings, C_loadings.T)  # p x p
+        for i in range(X.shape[0]):
+            residual = (X[i] - X_means)  # 1 x p
+            T2_contributions[i] = multiply_matrices(residual, T2_matrix_scaling)  # 1 x p
+            Q_contributions[i] = multiply_matrices(residual, Q_matrix_scaling)  # 1 x p
+        return Q_contributions, T2_contributions
 
     def _compute_Q_values(self, df_raw: pd.DataFrame):
         # n0te: most of the next bit is from Max's code. Original source?
@@ -625,7 +633,8 @@ class PCAModelChart(HotellingT2Chart):
                                              y_labels=["Sample $T^2$", "Sample Q"],
                                              ),
         plt.suptitle(f"Phase 1, $\\alpha$ = {100 * self.alpha:.2f} %")
-        plt.xlabel("Sample")
+        if not isinstance(self.df_phase1_stats.index, pd.core.indexes.datetimes.DatetimeIndex):
+            plt.xlabel("Sample")
 
     def plot_phase2(self, df_phase2: pd.DataFrame):
         """
@@ -633,17 +642,7 @@ class PCAModelChart(HotellingT2Chart):
 
         :param df_phase2: a dataframe with phase 2 data. Column names must match the phase 1 data given to fit()
         """
-        df_scores = apply_standardize_and_PCA(df_phase2, self.scaler, self.PCA)[:, :self.n_components_to_retain]
-        T2 = [self._compute_T2_value(x) for x in df_scores]
-        UCL_T2 = self._compute_T2_UCL(phase=2)
-        Q = self._compute_Q_values(df_phase2)
-
-        df_phase2_stats = pd.DataFrame(dict(T2=T2, UCL_T2=UCL_T2, outside_CL_T2=T2 > UCL_T2,
-                                            cumulated_prop_outside_CL_T2=np.cumsum(1 * (T2 > UCL_T2)) / self.m_samples))
-        df_phase2_Q_stats = pd.DataFrame(dict(Q=Q, UCL_Q=self.UCL_Q, outside_CL_Q=Q > self.UCL_Q,
-                                              cumulated_prop_outside_CL_Q=np.cumsum(
-                                                  1 * (Q > self.UCL_Q)) / self.m_samples))
-        df_phase2_stats = pd.concat([df_phase2_stats, df_phase2_Q_stats], axis=1)
+        df_phase2_stats = self.predict(df_phase2)
 
         final_proportions_outside_CL = df_phase2_stats[["cumulated_prop_outside_CL_T2",
                                                         "cumulated_prop_outside_CL_Q"]].tail(1).squeeze()
@@ -655,7 +654,8 @@ class PCAModelChart(HotellingT2Chart):
                                              y_labels=["Sample $T^2$", "Sample Q"],
                                              y_limit_offsets=(0.8, 1.2))
         plt.suptitle(f"Phase 2, $\\alpha$ = {100 * self.alpha:.2f} %")
-        plt.xlabel("Sample")
+        if not isinstance(self.df_phase1_stats.index, pd.core.indexes.datetimes.DatetimeIndex):
+            plt.xlabel("Sample")
 
     def plot_phase1_and_2(self, df_phase2: pd.DataFrame):
         """
@@ -674,7 +674,6 @@ class PCAModelChart(HotellingT2Chart):
 
 # TODO:
 #  - adapt to sample size > 1
-#  - estimating mu and sigma from given data - good practice?
 class EWMAChart(BaseControlChart, ControlChartPlotMixin):
     """The exponentially weighted moving average procedure. Useful for taking autocorrelation into account and better
     than Shewhart type charts at detecting smaller shifts. The EWMA chart is typically used for individual observations,

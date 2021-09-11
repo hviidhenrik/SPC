@@ -166,6 +166,7 @@ class ControlChartPlotMixin:
     def _plot_single_phase_multivariate(self, df, y_limit_offsets=(0.95, 1.05), gridsize: Tuple[int] = None,
                                         subplot_titles: List[str] = None,
                                         y_labels: List[str] = None):
+
         N_samples = df.shape[0]
         number_of_plots = len(self.stat_name)
         gridsize = (number_of_plots, 1) if gridsize is None else gridsize
@@ -244,7 +245,8 @@ class ControlChartPlotMixin:
         df = pd.concat([df_phase1_results, df_phase2_results])
         df["phase"] = 1
         df["phase"].iloc[len(df_phase1_results):] = 2
-        df = df.reset_index()
+        if not isinstance(self.df_phase1_stats.index, pd.core.indexes.datetimes.DatetimeIndex):
+            df = df.reset_index()
         N_samples = df.shape[0]
 
         number_of_plots = len(self.stat_name)
