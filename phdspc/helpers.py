@@ -242,10 +242,11 @@ class ControlChartPlotMixin:
                                       subplot_titles: List[str] = None,
                                       y_labels: List[str] = None):
 
+        index_is_datetime_format = isinstance(self.df_phase1_stats.index, pd.core.indexes.datetimes.DatetimeIndex)
         df = pd.concat([df_phase1_results, df_phase2_results])
         df["phase"] = 1
         df["phase"].iloc[len(df_phase1_results):] = 2
-        if not isinstance(self.df_phase1_stats.index, pd.core.indexes.datetimes.DatetimeIndex):
+        if not index_is_datetime_format:
             df = df.reset_index()
         N_samples = df.shape[0]
 
@@ -258,14 +259,14 @@ class ControlChartPlotMixin:
             UCL_to_plot = df[f"UCL_{stat_to_plot}"]
             df_outside_CL = df.loc[df[f"outside_CL_{stat_to_plot}"], stat_to_plot]
             axs[i].plot(df[stat_to_plot][df["phase"] == 1],
-                        linestyle="-", marker="", color=single_phase_line_color,
+                        linestyle="-", marker="", color=multivariate_phase1_color,
                         linewidth=get_line_width(N_samples), zorder=1, label="Phase 1")
             axs[i].plot(df[stat_to_plot][df["phase"] == 2],
-                        linestyle="-", marker="", color=single_phase_line_color,
+                        linestyle="-", marker="", color=multivariate_phase2_color,
                         linewidth=get_line_width(N_samples), zorder=1, label="Phase 2")
             axs[i].scatter(df_outside_CL.index.values, df_outside_CL,
                            s=get_outside_CL_marker_size(N_samples),
-                           marker="o", color="red", zorder=2)
+                           marker="o", color=outlier_marker_color, zorder=2)
             if self.center_line is not None:
                 axs[i].axhline(self.center_line, color="blue", alpha=0.7)
             if UCL_to_plot is not None:
@@ -279,6 +280,8 @@ class ControlChartPlotMixin:
             y_label = "" if y_labels is None else y_labels[i]
             axs[i].set_ylabel(y_label)
             axs[i].set_title(title)
+            if index_is_datetime_format:
+                fig.autofmt_xdate(bottom=0.1, rotation=30, ha='center')
         return fig, axs
 
 

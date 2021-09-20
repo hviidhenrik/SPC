@@ -665,11 +665,19 @@ class PCAModelChart(HotellingT2Chart):
         :param df_phase2: a dataframe with phase 2 data. Column names must match the phase 1 data given to fit()
         """
         df_phase2_results = self.predict(df_phase2)
-        self._plot_two_phases_multivariate(self.df_phase1_stats, df_phase2_results,
-                                           subplot_titles=["$T^2$-chart", "Q-chart"],
-                                           y_labels=["Sample $T^2$", "Sample Q"]
-                                           )
+        T2_outlier_percentage = 100 * df_phase2_results["cumulated_prop_outside_CL_T2"].tail(1).squeeze()
+        Q_outlier_percentage = 100 * df_phase2_results["cumulated_prop_outside_CL_Q"].tail(1).squeeze()
+        T_title = f"$T^2$-chart\n$\\alpha$ = {100*self.alpha:.2f} %, phase 2 samples outside control limit: {T2_outlier_percentage:.2f} %"
+        Q_title = f"Q-chart\n$\\alpha$ = {100*self.alpha:.2f} %, phase 2 samples outside control limit: {Q_outlier_percentage:.2f} %"
+        fig, axs = self._plot_two_phases_multivariate(self.df_phase1_stats, df_phase2_results,
+                                                      subplot_titles=[T_title,
+                                                                      Q_title],
+                                                      y_labels=["Sample $T^2$", "Sample Q"]
+                                                      )
+        fig.subplots_adjust(top=0.88)
         plt.suptitle(f"Phase 1 and 2 PCA SPC model")
+        fig.tight_layout()
+        return fig, axs
 
 
 # TODO:
