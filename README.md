@@ -17,4 +17,4 @@ inspiration for this come from the popular scikit-learn library, where most proc
 a fit() method that does the heavy lifting by estimating necessary model parameters. This
 is the case for this package as well. 
 
-Henrik Hviid Hansen, 20th August 2021.
+hviidhenrik, 20th August 2021.
