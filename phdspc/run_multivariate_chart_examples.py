@@ -3,35 +3,21 @@ from phdspc.helpers import *
 
 plt.style.use("seaborn")
 
-df_phase1 = pd.DataFrame({"x1": [1, 2, 3, 1, 2, 3, 5, 4, 3, 5, 6, 7, 5, 3, 1, 2, 3, 2, 1, 3, 2],
-                          "x2": [3, 4, 3, 7, 2, 8, 5, 7, 3, 5, 6, 6, 5, 6, 1, 3, 2, 1, 4, 7, 8],
-                          "x3": [13, 24, 33, 37, 22, 18, 25, 37, 23, 35, 36, 16, 25, 26, 11, 33, 22, 11, 24, 27, 28],
-                          })
+df_phase1 = pd.DataFrame(
+    {
+        "x1": [1, 2, 3, 1, 2, 3, 5, 4, 3, 5, 6, 7, 5, 3, 1, 2, 3, 2, 1, 3, 2],
+        "x2": [3, 4, 3, 7, 2, 8, 5, 7, 3, 5, 6, 6, 5, 6, 1, 3, 2, 1, 4, 7, 8],
+        "x3": [13, 24, 33, 37, 22, 18, 25, 37, 23, 35, 36, 16, 25, 26, 11, 33, 22, 11, 24, 27, 28],
+    }
+)
 # np.random.seed(1234)
 #
 N = 10
-df_phase2 = pd.DataFrame(dict(x1=np.random.normal(size=N, scale=0.1),
-                              x2=np.random.normal(size=N),
-                              x3=np.random.normal(size=N)))
-
-# chart = HotellingT2Chart(n_sample_size=1).fit(df_phase1=df_phase1, verbose=True)
-# print(chart.df_phase1_stats)
-# chart.plot_phase1()
-# plt.show()
-
-# foo = df_phase1.rolling(window=3).mean()
-# bar = df_phase1.resample()
+df_phase2 = pd.DataFrame(
+    dict(x1=np.random.normal(size=N, scale=0.1), x2=np.random.normal(size=N), x3=np.random.normal(size=N))
+)
 
 chart = PCAModelChart(n_sample_size=1).fit(df_phase1=df_phase1, n_components_to_retain=3, verbose=True)
 print(chart.df_contributions)
-# chart.df_T2_contributions
-# chart.df_Q_contributions
-# chart = HotellingT2Chart(n_sample_size=1).fit(df_phase1=df_phase1, verbose=True)
-# chart.plot_phase1()
-# plt.show()
-#
-# chart.plot_phase2(df_phase2)
-# plt.show()
-
 chart.plot_phase1_and_2(df_phase2)
 plt.show()

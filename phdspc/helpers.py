@@ -1,4 +1,4 @@
-from typing import Optional, Union, List, Tuple
+from typing import List, Optional, Tuple, Union
 
 import matplotlib.axes._subplots
 import matplotlib.pyplot as plt
@@ -34,7 +34,7 @@ def get_df_with_sample_id(df: pd.DataFrame, n_sample_size: int = 1):
     return df_copy[cols]
 
 
-def multiply_matrices(*arrays: np.array):
+def multiply_matrices(*arrays: np.ndarray):
     """
     Helper function to multiply an arbitrary number of matrices with appropriate dimensions wrt each other.
 
@@ -108,14 +108,14 @@ def plot_features_acf(df, gridsize: Tuple[int, int] = None, nlags: int = 50, cor
     if len(axs.shape) == 1:
         for plot_number in range(max(nrows, ncols)):
             col_name = col_names[col_counter]
-            axs[plot_number].stem(df_acf[col_name], linefmt='grey', markerfmt='', bottom=0, basefmt="r--")
+            axs[plot_number].stem(df_acf[col_name], linefmt="grey", markerfmt="", bottom=0, basefmt="r--")
             axs[plot_number].set_title(col_name)
             col_counter += 1
     else:
         for row in range(nrows):
             for col in range(ncols):
                 col_name = col_names[col_counter]
-                axs[row, col].stem(df_acf[col_name], linefmt='grey', markerfmt='', bottom=0, basefmt="r--")
+                axs[row, col].stem(df_acf[col_name], linefmt="grey", markerfmt="", bottom=0, basefmt="r--")
                 axs[row, col].set_title(col_name)
                 col_counter += 1
     fig.suptitle("Autocorrelation" if corr_type == "acf" else "Partial autocorrelation")
@@ -123,7 +123,6 @@ def plot_features_acf(df, gridsize: Tuple[int, int] = None, nlags: int = 50, cor
 
 
 class ControlChartPlotMixin:
-
     def __init__(self):
         self.UCL = None
         self.LCL = None
@@ -132,8 +131,9 @@ class ControlChartPlotMixin:
         self.stat_name = None
 
     @staticmethod
-    def _plot_scalar_or_array(x: Union[float, np.ndarray, List[float]],
-                              ax: matplotlib.axes._subplots.Axes, color="red"):
+    def _plot_scalar_or_array(
+        x: Union[float, np.ndarray, List[float]], ax: matplotlib.axes._subplots.Axes, color="red"
+    ):
         if isinstance(x, (np.ndarray, pd.Series, list)):
             ax.plot(x, color=color, linestyle="dashed")
         else:
@@ -143,11 +143,22 @@ class ControlChartPlotMixin:
         fig, ax = plt.subplots(1, 1)
         df_outside_CL = df.loc[df["outside_CL"], self.stat_name]
         N_samples = df.shape[0]
-        ax.plot(df[self.stat_name], linestyle="-", marker="", color=single_phase_line_color,
-                linewidth=get_line_width(N_samples),
-                zorder=1)
-        ax.scatter(df_outside_CL.index.values, df_outside_CL, marker="o", color="red",
-                   s=get_outside_CL_marker_size(N_samples), zorder=2)
+        ax.plot(
+            df[self.stat_name],
+            linestyle="-",
+            marker="",
+            color=single_phase_line_color,
+            linewidth=get_line_width(N_samples),
+            zorder=1,
+        )
+        ax.scatter(
+            df_outside_CL.index.values,
+            df_outside_CL,
+            marker="o",
+            color="red",
+            s=get_outside_CL_marker_size(N_samples),
+            zorder=2,
+        )
         legend_labels = [self.stat_name]
         if self.center_line is not None:
             ax.axhline(self.center_line, color="blue", alpha=0.7)
@@ -163,9 +174,14 @@ class ControlChartPlotMixin:
         ax.set_ylim(y_limits[0] * y_limit_offsets[0], y_limits[1] * y_limit_offsets[1])
         return fig
 
-    def _plot_single_phase_multivariate(self, df, y_limit_offsets=(0.95, 1.05), gridsize: Tuple[int] = None,
-                                        subplot_titles: List[str] = None,
-                                        y_labels: List[str] = None):
+    def _plot_single_phase_multivariate(
+        self,
+        df,
+        y_limit_offsets=(0.95, 1.05),
+        gridsize: Tuple[int] = None,
+        subplot_titles: List[str] = None,
+        y_labels: List[str] = None,
+    ):
 
         N_samples = df.shape[0]
         number_of_plots = len(self.stat_name)
@@ -176,12 +192,22 @@ class ControlChartPlotMixin:
             LCL_to_plot = df[f"LCL_{stat_to_plot}"] if f"LCL_{stat_to_plot}" in df.columns else None
             UCL_to_plot = df[f"UCL_{stat_to_plot}"]
             df_outside_CL = df.loc[df[f"outside_CL_{stat_to_plot}"], stat_to_plot]
-            axs[i].plot(df[stat_to_plot], linestyle="-", marker="", color=single_phase_line_color,
-                        linewidth=get_line_width(N_samples),
-                        zorder=1)
-            axs[i].scatter(df_outside_CL.index.values, df_outside_CL,
-                           s=get_outside_CL_marker_size(N_samples),
-                           marker="o", color="red", zorder=2)
+            axs[i].plot(
+                df[stat_to_plot],
+                linestyle="-",
+                marker="",
+                color=single_phase_line_color,
+                linewidth=get_line_width(N_samples),
+                zorder=1,
+            )
+            axs[i].scatter(
+                df_outside_CL.index.values,
+                df_outside_CL,
+                s=get_outside_CL_marker_size(N_samples),
+                marker="o",
+                color="red",
+                zorder=2,
+            )
             legend_labels = [stat_to_plot]
             if self.center_line is not None:
                 axs[i].axhline(self.center_line, color="blue", alpha=0.7)
@@ -200,12 +226,13 @@ class ControlChartPlotMixin:
             axs[i].set_title(title)
         return fig, axs
 
-    def _plot_two_phases(self, df_phase1_results: pd.DataFrame, df_phase2_results: pd.DataFrame,
-                         y_limit_offsets=(0.95, 1.05)):
+    def _plot_two_phases(
+        self, df_phase1_results: pd.DataFrame, df_phase2_results: pd.DataFrame, y_limit_offsets=(0.95, 1.05)
+    ):
         fig, ax = plt.subplots(1, 1)
         df = pd.concat([df_phase1_results, df_phase2_results])
         df["phase"] = 1
-        df["phase"].iloc[len(df_phase1_results):] = 2
+        df["phase"].iloc[len(df_phase1_results) :] = 2
         df = df.reset_index()
         N_samples = df.shape[0]
         df_outside_CL = df.loc[df["outside_CL"], self.stat_name]
@@ -214,12 +241,22 @@ class ControlChartPlotMixin:
         UCL_to_plot = df[f"UCL"]
 
         legend_labels = ["Phase 1", "Phase 2"]
-        plt.plot(df[self.stat_name][df["phase"] == 1],
-                 linestyle="-", marker="", color=single_phase_line_color,
-                 linewidth=get_line_width(N_samples), zorder=1)
-        plt.plot(df[self.stat_name][df["phase"] == 2], color=single_phase_line_color,
-                 linewidth=get_line_width(N_samples),
-                 linestyle="-", marker="", zorder=1)
+        plt.plot(
+            df[self.stat_name][df["phase"] == 1],
+            linestyle="-",
+            marker="",
+            color=single_phase_line_color,
+            linewidth=get_line_width(N_samples),
+            zorder=1,
+        )
+        plt.plot(
+            df[self.stat_name][df["phase"] == 2],
+            color=single_phase_line_color,
+            linewidth=get_line_width(N_samples),
+            linestyle="-",
+            marker="",
+            zorder=1,
+        )
         if self.center_line is not None:
             ax.axhline(self.center_line, color="blue", alpha=0.7)
             legend_labels.append("Center line")
@@ -229,23 +266,33 @@ class ControlChartPlotMixin:
         if LCL_to_plot is not None:
             self._plot_scalar_or_array(LCL_to_plot, ax, color=LCL_color)
 
-        ax.scatter(df_outside_CL.index.values, df_outside_CL,
-                   s=get_outside_CL_marker_size(N_samples),
-                   marker="o", color="red", zorder=2)
+        ax.scatter(
+            df_outside_CL.index.values,
+            df_outside_CL,
+            s=get_outside_CL_marker_size(N_samples),
+            marker="o",
+            color="red",
+            zorder=2,
+        )
         plt.legend(legend_labels, ncol=len(legend_labels))
         y_limits = ax.get_ylim()
         ax.set_ylim(y_limits[0] * y_limit_offsets[0], y_limits[1] * y_limit_offsets[1])
         return fig
 
-    def _plot_two_phases_multivariate(self, df_phase1_results: pd.DataFrame, df_phase2_results: pd.DataFrame,
-                                      y_limit_offsets=(0.95, 1.05), gridsize: Tuple[int] = None,
-                                      subplot_titles: List[str] = None,
-                                      y_labels: List[str] = None):
+    def _plot_two_phases_multivariate(
+        self,
+        df_phase1_results: pd.DataFrame,
+        df_phase2_results: pd.DataFrame,
+        y_limit_offsets=(0.95, 1.05),
+        gridsize: Tuple[int] = None,
+        subplot_titles: List[str] = None,
+        y_labels: List[str] = None,
+    ):
 
         index_is_datetime_format = isinstance(self.df_phase1_stats.index, pd.core.indexes.datetimes.DatetimeIndex)
         df = pd.concat([df_phase1_results, df_phase2_results])
         df["phase"] = 1
-        df["phase"].iloc[len(df_phase1_results):] = 2
+        df["phase"].iloc[len(df_phase1_results) :] = 2
         if not index_is_datetime_format:
             df = df.reset_index()
         N_samples = df.shape[0]
@@ -258,15 +305,32 @@ class ControlChartPlotMixin:
             LCL_to_plot = df[f"LCL_{stat_to_plot}"] if f"LCL_{stat_to_plot}" in df.columns else None
             UCL_to_plot = df[f"UCL_{stat_to_plot}"]
             df_outside_CL = df.loc[df[f"outside_CL_{stat_to_plot}"], stat_to_plot]
-            axs[i].plot(df[stat_to_plot][df["phase"] == 1],
-                        linestyle="-", marker="", color=multivariate_phase1_color,
-                        linewidth=get_line_width(N_samples), zorder=1, label="Phase 1")
-            axs[i].plot(df[stat_to_plot][df["phase"] == 2],
-                        linestyle="-", marker="", color=multivariate_phase2_color,
-                        linewidth=get_line_width(N_samples), zorder=1, label="Phase 2")
-            axs[i].scatter(df_outside_CL.index.values, df_outside_CL,
-                           s=get_outside_CL_marker_size(N_samples),
-                           marker="o", color=outlier_marker_color, zorder=2)
+            axs[i].plot(
+                df[stat_to_plot][df["phase"] == 1],
+                linestyle="-",
+                marker="",
+                color=multivariate_phase1_color,
+                linewidth=get_line_width(N_samples),
+                zorder=1,
+                label="Phase 1",
+            )
+            axs[i].plot(
+                df[stat_to_plot][df["phase"] == 2],
+                linestyle="-",
+                marker="",
+                color=multivariate_phase2_color,
+                linewidth=get_line_width(N_samples),
+                zorder=1,
+                label="Phase 2",
+            )
+            axs[i].scatter(
+                df_outside_CL.index.values,
+                df_outside_CL,
+                s=get_outside_CL_marker_size(N_samples),
+                marker="o",
+                color=outlier_marker_color,
+                zorder=2,
+            )
             if self.center_line is not None:
                 axs[i].axhline(self.center_line, color="blue", alpha=0.7)
             if UCL_to_plot is not None:
@@ -281,7 +345,7 @@ class ControlChartPlotMixin:
             axs[i].set_ylabel(y_label)
             axs[i].set_title(title)
             if index_is_datetime_format:
-                fig.autofmt_xdate(bottom=0.1, rotation=30, ha='center')
+                fig.autofmt_xdate(bottom=0.1, rotation=30, ha="center")
         return fig, axs
 
 
@@ -298,7 +362,7 @@ def plot_df_acf(df, gridsize: Tuple[int, int] = None, nlags: int = 50, corr_type
     for row in range(nrows):
         for col in range(ncols):
             col_name = col_names[col_counter]
-            axs[row, col].stem(df_acf[col_name], linefmt='grey', markerfmt='', bottom=0, basefmt="r--")
+            axs[row, col].stem(df_acf[col_name], linefmt="grey", markerfmt="", bottom=0, basefmt="r--")
             axs[row, col].set_title(col_name)
             col_counter += 1
     fig.suptitle("Autocorrelation" if corr_type == "acf" else "Partial autocorrelation")

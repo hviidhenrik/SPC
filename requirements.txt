@@ -1,5 +1,8 @@
-pytest
+matplotlib
 numpy
 pandas
-scikit-learn
-matplotlib
+pytest
+scikit_learn
+scipy
+setuptools
+statsmodels

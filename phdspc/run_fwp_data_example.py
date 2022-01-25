@@ -15,8 +15,9 @@ df_phase2.index = pd.to_datetime(df_phase2.index)
 # df_phase2["temp_slipring_diff"].plot()
 # plt.show()
 
-chart = PCAModelChart(alpha=0.005).fit(df_phase1, n_components_to_retain=None,
-                                       PC_variance_explained_min=0.9, verbose=True)
+chart = PCAModelChart(alpha=0.005).fit(
+    df_phase1, n_components_to_retain=None, PC_variance_explained_min=0.9, verbose=True
+)
 # print(chart.df_T2_contributions)
 # print(chart.df_Q_contributions)
 # chart = HotellingT2Chart().fit(df_phase1)
