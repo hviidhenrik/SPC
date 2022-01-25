@@ -3,8 +3,10 @@ from phdspc.helpers import *
 
 plt.style.use("seaborn")
 path = "C:/datasets/SSV feedwater pumps/all tags/SPC/"
-df_phase1 = pd.read_csv(path + "data_pump_30_phase1_2015-2017.csv", index_col="timelocal")
-df_phase2 = pd.read_csv(path + "data_pump_30_phase2_2017.csv", index_col="timelocal")
+df_phase1 = pd.read_csv(
+    path + "data_pump_30_phase1_2015-2017_A.csv", index_col="timelocal"
+)
+df_phase2 = pd.read_csv(path + "data_pump_30_phase2_2017_A.csv", index_col="timelocal")
 
 df_phase1 = df_phase1.sample(frac=0.2).sort_index()
 df_phase2 = df_phase2.sample(frac=0.2).sort_index()
@@ -28,5 +30,5 @@ chart = PCAModelChart(alpha=0.005).fit(
 # plt.show()
 
 fig, axs = chart.plot_phase1_and_2(df_phase2)
-
-plt.savefig("test.svg")
+plt.show()
+# plt.savefig("test.svg")

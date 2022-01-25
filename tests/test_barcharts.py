@@ -30,7 +30,9 @@ def test_xbarchart_fit_correct_values_sample_size_2_and_range():
 
 def test_xbarchart_fit_correct_values_sample_size_4_and_range():
     df_phase1 = pd.DataFrame({"x1": [1, 2, 4, 1, 1, 3, 2]})
-    fitted = XBarChart(n_sample_size=4, variability_estimator="range").fit(df_phase1=df_phase1)
+    fitted = XBarChart(n_sample_size=4, variability_estimator="range").fit(
+        df_phase1=df_phase1
+    )
 
     expected_center_line = np.mean([2, 2])
     constant_A2 = 0.729
@@ -45,13 +47,18 @@ def test_xbarchart_fit_correct_values_sample_size_4_and_range():
 
 
 def test_get_df_with_sample_means_and_variability_sample_size_2_and_range():
-    df_test_input = pd.DataFrame({"sample_id": [1, 1, 2, 2, 3, 3, 4], "x1": [1, 2, 2, 3, 3, 4, 5]})
+    df_test_input = pd.DataFrame(
+        {"sample_id": [1, 1, 2, 2, 3, 3, 4], "x1": [1, 2, 2, 3, 3, 4, 5]}
+    )
     df_expected = pd.DataFrame(
-        {"sample_mean": [1.5, 2.5, 3.5, 5], "sample_variability": [1, 1, 1, 0]}, index=[1, 2, 3, 4]
+        {"sample_mean": [1.5, 2.5, 3.5, 5], "sample_variability": [1, 1, 1, 0]},
+        index=[1, 2, 3, 4],
     )
     chart = XBarChart(n_sample_size=2, variability_estimator="range").fit(df_test_input)
     df_expected.index.name = "sample_id"
-    df_output = chart._get_df_with_sample_means_and_variability(df_test_input, grouping_column="sample_id")
+    df_output = chart._get_df_with_sample_means_and_variability(
+        df_test_input, grouping_column="sample_id"
+    )
     assert_frame_equal(df_output, df_expected, check_dtype=False)
 
 
@@ -61,13 +68,18 @@ def test_get_df_with_sample_means_and_variability_sample_size_12_and_std():
     df_expected = pd.DataFrame(
         {
             "sample_mean": [6.5, 18.5],
-            "sample_variability": [np.std(values[0:12], ddof=1), np.std(values[12:24], ddof=1)],
+            "sample_variability": [
+                np.std(values[0:12], ddof=1),
+                np.std(values[12:24], ddof=1),
+            ],
         },
         index=[1, 2],
     )
     chart = XBarChart(n_sample_size=12, variability_estimator="std").fit(df_test_input)
     df_expected.index.name = "sample_id"
-    df_output = chart._get_df_with_sample_means_and_variability(df_test_input, grouping_column="sample_id")
+    df_output = chart._get_df_with_sample_means_and_variability(
+        df_test_input, grouping_column="sample_id"
+    )
     assert_frame_equal(df_output, df_expected, check_dtype=False)
 
 
@@ -77,7 +89,8 @@ def test_group_samples_and_compute_stats():
 
     df_output = fitted._group_samples_and_compute_stats(df_test_input)
     df_expected = pd.DataFrame(
-        {"sample_mean": [1.5, 3.5, 2.5, 2], "sample_variability": [1, 1, 1, 0]}, index=[1, 2, 3, 4]
+        {"sample_mean": [1.5, 3.5, 2.5, 2], "sample_variability": [1, 1, 1, 0]},
+        index=[1, 2, 3, 4],
     )
     df_expected.index.name = "sample_id"
     assert_frame_equal(df_output, df_expected, check_dtype=False)
@@ -85,7 +98,9 @@ def test_group_samples_and_compute_stats():
 
 def test_collect_results_df_correct_output_dataframe():
     df_test_input = pd.DataFrame({"x1": [1, 2, 4, 3, 2, 3, 2]})
-    fitted = XBarChart(n_sample_size=2, variability_estimator="range").fit(df_phase1=df_test_input)
+    fitted = XBarChart(n_sample_size=2, variability_estimator="range").fit(
+        df_phase1=df_test_input
+    )
 
     df_output = fitted._collect_results_df(fitted.df_phase1_stats)
     df_expected = pd.DataFrame(
@@ -103,7 +118,9 @@ def test_collect_results_df_correct_output_dataframe():
 
 def test_collect_results_df_correct_bool_for_outside_CL():
     df_test_input = pd.DataFrame({"x1": [1, 2, 4, 3, 2, 3, 2, 20]})
-    fitted = XBarChart(n_sample_size=2, variability_estimator="range").fit(df_phase1=df_test_input)
+    fitted = XBarChart(n_sample_size=2, variability_estimator="range").fit(
+        df_phase1=df_test_input
+    )
     fitted.LCL = 1.5
     fitted.UCL = 3.5
     df_output = fitted._collect_results_df(fitted.df_phase1_stats)
@@ -123,7 +140,9 @@ def test_collect_results_df_correct_bool_for_outside_CL():
 
 def test_RChart_fit_correct_values_sample_size_2_and_range():
     df_phase1 = pd.DataFrame({"x1": [1, 3, 6, 7, 1, 3, 2]})
-    fitted = RChart(n_sample_size=2, variability_estimator="range").fit(df_phase1=df_phase1)
+    fitted = RChart(n_sample_size=2, variability_estimator="range").fit(
+        df_phase1=df_phase1
+    )
 
     constant_D3 = 0
     constant_D4 = 3.267
@@ -138,7 +157,9 @@ def test_RChart_fit_correct_values_sample_size_2_and_range():
 
 def test_RChart_fit_correct_values_sample_size_4_and_std():
     df_phase1 = pd.DataFrame({"x1": [1, 3, 6, 7, 1, 3, 2, 4, 5]})
-    fitted = RChart(n_sample_size=4, variability_estimator="std").fit(df_phase1=df_phase1)
+    fitted = RChart(n_sample_size=4, variability_estimator="std").fit(
+        df_phase1=df_phase1
+    )
 
     constant_B3 = 0
     constant_B4 = 2.266
@@ -153,7 +174,9 @@ def test_RChart_fit_correct_values_sample_size_4_and_std():
 
 def test_RChart_fit_correct_values_sample_size_4_and_range():
     df_phase1 = pd.DataFrame({"x1": [1, 2, 4, 1, 2, 5, 12]})
-    fitted = RChart(n_sample_size=4, variability_estimator="range").fit(df_phase1=df_phase1)
+    fitted = RChart(n_sample_size=4, variability_estimator="range").fit(
+        df_phase1=df_phase1
+    )
 
     constant_D3 = 0
     constant_D4 = 2.282
@@ -178,15 +201,24 @@ def test_RChart_fit_correct_values_sample_size_4_and_range():
         ("auto", 11, "std"),
     ],
 )
-def test_determine_varability_estimator_correct_output(test_variability_estimator, test_sample_size, expected_output):
-    xbarchart = XBarChart(n_sample_size=test_sample_size, variability_estimator=test_variability_estimator)
-    assert expected_output == xbarchart._determine_variability_estimator(test_variability_estimator)
+def test_determine_varability_estimator_correct_output(
+    test_variability_estimator, test_sample_size, expected_output
+):
+    xbarchart = XBarChart(
+        n_sample_size=test_sample_size, variability_estimator=test_variability_estimator
+    )
+    assert expected_output == xbarchart._determine_variability_estimator(
+        test_variability_estimator
+    )
 
 
 @pytest.mark.parametrize(
-    "test_bad_variability_estimator_string", ["r", "a", "s", "mkaæomkm", "foo", "variance", None, -1, True, False]
+    "test_bad_variability_estimator_string",
+    ["r", "a", "s", "mkaæomkm", "foo", "variance", None, -1, True, False],
 )
-def test_determine_varability_estimator_bad_input_fails(test_bad_variability_estimator_string):
+def test_determine_varability_estimator_bad_input_fails(
+    test_bad_variability_estimator_string,
+):
     with pytest.raises(Exception):
         XBarChart(variability_estimator=test_bad_variability_estimator_string)
 
@@ -236,9 +268,13 @@ def test_MEWMA_fit_correct_values():
     Z1_output = np.array(chart.df_phase2_stats["Z1"]).round(2)
     Z2_output = np.array(chart.df_phase2_stats["Z2"]).round(2)
 
-    Z1_expected = np.array([-0.12, -0.1, -0.25, -0.2, -0.09, 0.0, -0.03, 0.04, 0.19, 0.32])
+    Z1_expected = np.array(
+        [-0.12, -0.1, -0.25, -0.2, -0.09, 0.0, -0.03, 0.04, 0.19, 0.32]
+    )
     Z2_expected = np.array([0.06, 0.14, 0.17, 0.2, 0.1, 0.19, 0.4, 0.53, 0.64, 0.88])
-    T2_expected = np.array([3.29, 3.18, 7.37, 5.26, 1.09, 1.28, 5.66, 8.32, 9.64, 17.21])
+    T2_expected = np.array(
+        [3.29, 3.18, 7.37, 5.26, 1.09, 1.28, 5.66, 8.32, 9.64, 17.21]
+    )
 
     assert (T2_output == T2_expected).all()
     assert (Z1_output == Z1_expected).all()
@@ -435,7 +471,9 @@ def test_EWMA_fit_correct_values():
         True,
     ]
 
-    chart = EWMAChart(lambda_=0.1, mu_process_target=10, sigma=1).fit(df_phase2=df_phase2_input)
+    chart = EWMAChart(lambda_=0.1, mu_process_target=10, sigma=1).fit(
+        df_phase2=df_phase2_input
+    )
     Z_output = np.array(chart.df_phase2_stats["Z"]).round(2).tolist()
     LCL_output = np.array(chart.df_phase2_stats["LCL"]).round(2).tolist()
     UCL_output = np.array(chart.df_phase2_stats["UCL"]).round(2).tolist()
@@ -456,11 +494,35 @@ def test_PCAModelChart_fit_correct_values():
         {
             "x1": [1, 2, 3, 1, 2, 3, 5, 4, 3, 5, 6, 7, 5, 3, 1, 2, 3, 2, 1, 3, 2],
             "x2": [3, 4, 3, 7, 2, 8, 5, 7, 3, 5, 6, 6, 5, 6, 1, 3, 2, 1, 4, 7, 8],
-            "x3": [13, 24, 33, 37, 22, 18, 25, 37, 23, 35, 36, 16, 25, 26, 11, 33, 22, 11, 24, 27, 28],
+            "x3": [
+                13,
+                24,
+                33,
+                37,
+                22,
+                18,
+                25,
+                37,
+                23,
+                35,
+                36,
+                16,
+                25,
+                26,
+                11,
+                33,
+                22,
+                11,
+                24,
+                27,
+                28,
+            ],
         }
     )
 
-    chart = PCAModelChart(n_sample_size=1, alpha=0.05).fit(df_phase1=df_phase1, n_components_to_retain=2)
+    chart = PCAModelChart(n_sample_size=1, alpha=0.05).fit(
+        df_phase1=df_phase1, n_components_to_retain=2
+    )
 
     output_T2 = chart.df_phase1_stats["T2"].round(3)
     output_Q = chart.df_phase1_stats["Q"].round(3)
@@ -532,10 +594,38 @@ def test_compute_T2_contributions():
         {
             "x1": [1, 2, 3, 1, 2, 3, 5, 4, 3, 5, 6, 7, 5, 3, 1, 2, 3, 2, 1, 3, 2],
             "x2": [3, 4, 3, 7, 2, 8, 5, 7, 3, 5, 6, 6, 5, 6, 1, 3, 2, 1, 4, 7, 8],
-            "x3": [13, 24, 33, 37, 22, 18, 25, 37, 23, 35, 36, 16, 25, 26, 11, 33, 22, 11, 24, 27, 28],
+            "x3": [
+                13,
+                24,
+                33,
+                37,
+                22,
+                18,
+                25,
+                37,
+                23,
+                35,
+                36,
+                16,
+                25,
+                26,
+                11,
+                33,
+                22,
+                11,
+                24,
+                27,
+                28,
+            ],
         }
     )
-    df_expected = pd.DataFrame(dict(PC1=[2.139, 0.174, 0.006], PC2=[0.01, 0.2, 0.233], PC3=[0.832, 0.002, 2.497]))
-    chart = PCAModelChart(n_sample_size=1).fit(df_phase1=df_phase1, n_components_to_retain=3, verbose=True)
+    df_expected = pd.DataFrame(
+        dict(
+            PC1=[2.139, 0.174, 0.006], PC2=[0.01, 0.2, 0.233], PC3=[0.832, 0.002, 2.497]
+        )
+    )
+    chart = PCAModelChart(n_sample_size=1).fit(
+        df_phase1=df_phase1, n_components_to_retain=3, verbose=True
+    )
     df_output = chart.df_contributions.iloc[0:3].round(3)
     assert_frame_equal(df_output, df_expected, check_dtype=False)
