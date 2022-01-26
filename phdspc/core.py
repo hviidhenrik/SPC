@@ -300,10 +300,10 @@ class MEWMAChart(BaseControlChart, ControlChartPlotMixin):
     """
 
     def __init__(
-        self,
-        n_sample_size: int = 1,
-        lambda_: float = 0.1,
-        sigma: Optional[np.ndarray] = None,
+            self,
+            n_sample_size: int = 1,
+            lambda_: float = 0.1,
+            sigma: Optional[np.ndarray] = None,
     ):
         super().__init__(n_sample_size=n_sample_size)
         assert self.n_sample_size > 0, "Sample/subgroup size must be greater than 0."
@@ -345,7 +345,7 @@ class MEWMAChart(BaseControlChart, ControlChartPlotMixin):
             z_i = self.lambda_ * x_i + (1 - self.lambda_) * Z[i - 1]  # eq: 11.30
             Z.append(z_i)
             sigma_i = (
-                (self.lambda_ / (2 - self.lambda_)) * (1 - (1 - self.lambda_) ** (2 * i)) * self.sigma
+                    (self.lambda_ / (2 - self.lambda_)) * (1 - (1 - self.lambda_) ** (2 * i)) * self.sigma
             )  # eq: 11.32
             T2.append(multiply_matrices(z_i.transpose(), np.linalg.inv(sigma_i), z_i))  # eq: 11.31
 
@@ -362,14 +362,14 @@ class MEWMAChart(BaseControlChart, ControlChartPlotMixin):
         return self
 
     def fit_on_PCs(
-        self,
-        df_phase1: pd.DataFrame,
-        df_phase2: pd.DataFrame,
-        n_components: int = None,
-        PC_variance_explained_min: float = 0.9,
-        verbose: bool = False,
-        *args,
-        **kwargs,
+            self,
+            df_phase1: pd.DataFrame,
+            df_phase2: pd.DataFrame,
+            n_components: int = None,
+            PC_variance_explained_min: float = 0.9,
+            verbose: bool = False,
+            *args,
+            **kwargs,
     ):
         df_transformed, pca, scaler = standardize_and_PCA(df_phase1, n_components=n_components)
         if n_components is None:
@@ -434,12 +434,12 @@ class HotellingT2Chart(BaseControlChart, ControlChartPlotMixin):
         self.df_contributions = None
 
     def fit(
-        self,
-        df_phase1: pd.DataFrame,
-        compute_contributions: bool = True,
-        verbose=False,
-        *args,
-        **kwargs,
+            self,
+            df_phase1: pd.DataFrame,
+            compute_contributions: bool = True,
+            verbose=False,
+            *args,
+            **kwargs,
     ):
         self.m_samples = df_phase1.shape[0]
         self.input_dim = df_phase1.shape[1]
@@ -507,7 +507,7 @@ class HotellingT2Chart(BaseControlChart, ControlChartPlotMixin):
 
     @staticmethod
     def _compute_T2_value_given_xbar_and_sigma_inv(
-        x: np.ndarray, x_bar: np.ndarray = None, sigma_inverse: np.ndarray = None
+            x: np.ndarray, x_bar: np.ndarray = None, sigma_inverse: np.ndarray = None
     ):
         assert x.shape == x_bar.shape, f"The shape of x ({x.shape}) must be the same as x_bar: {x_bar.shape}"
         return multiply_matrices((x - x_bar).T, sigma_inverse, (x - x_bar))
@@ -578,18 +578,18 @@ class PCAModelChart(HotellingT2Chart):
         self.df_Q_contributions = None
 
     def fit(
-        self,
-        df_phase1: pd.DataFrame,
-        n_components_to_retain: int = None,
-        PC_variance_explained_min: float = 0.9,
-        compute_contributions: bool = True,
-        verbose=False,
-        *args,
-        **kwargs,
+            self,
+            df_phase1: pd.DataFrame,
+            n_components_to_retain: int = None,
+            PC_variance_explained_min: float = 0.9,
+            compute_contributions: bool = True,
+            verbose=False,
+            *args,
+            **kwargs,
     ):
         self.n_components_to_retain = n_components_to_retain
         self.m_samples = df_phase1.shape[0]
-        df_transformed, self.PCA, self.scaler = standardize_and_PCA(df_phase1)
+        df_PCA_transformed, self.PCA, self.scaler = standardize_and_PCA(df_phase1)
         self.stat_name = (self.stat_name, "Q")
         if self.n_components_to_retain is None:
             self.n_components_to_retain, cumulative_variances = get_num_of_PCs_to_retain(
@@ -600,11 +600,22 @@ class PCAModelChart(HotellingT2Chart):
                 f"PC's used: {self.n_components_to_retain}\nData variation explained: "
                 f"{100 * cumulative_variances[self.n_components_to_retain - 1]:.2f} %",
             )
-        # call parent class to estimate T^2 statistics
-        df_transformed = df_transformed[:, : self.n_components_to_retain]
-        PC_names = [f"PC{i}" for i in range(1, df_transformed.shape[1] + 1)]
-        super().fit(df_phase1=pd.DataFrame(df_transformed, columns=PC_names, index=df_phase1.index))
-        Q = self._compute_Q_values(df_phase1)
+
+        # first call parent class to estimate T^2 statistics
+        df_PCA_transformed = df_PCA_transformed[:, : self.n_components_to_retain]
+        PC_names = [f"PC{i}" for i in range(1, df_PCA_transformed.shape[1] + 1)]
+        super().fit(df_phase1=pd.DataFrame(df_PCA_transformed, columns=PC_names, index=df_phase1.index))
+        self.is_fitted = False  # overrides is_fitted attribute set by parent's fit
+        self.df_phase1_stats = self.df_phase1_stats.rename(
+            columns={
+                "UCL": "UCL_T2",
+                "outside_CL": "outside_CL_T2",
+                "cumulated_prop_outside_CL": "cumulated_prop_outside_CL_T2",
+            }
+        )
+
+        # 2nd, calculate Q statistic and its control limit
+        Q = self._compute_Q_values(df_phase1)  # PCA is done inside this function, so Q is done on the PC's
         self.df_phase1_stats["Q"] = Q
         self.UCL_Q = self._compute_Q_UCL(Q)
         df_Q_stats = pd.DataFrame(
@@ -614,21 +625,16 @@ class PCAModelChart(HotellingT2Chart):
                 cumulated_prop_outside_CL_Q=np.cumsum(1 * (Q > self.UCL_Q)) / df_phase1.shape[0],
             )
         )
-        self.df_phase1_stats = self.df_phase1_stats.rename(
-            columns={
-                "UCL": "UCL_T2",
-                "outside_CL": "outside_CL_T2",
-                "cumulated_prop_outside_CL": "cumulated_prop_outside_CL_T2",
-            }
-        )
         self.df_phase1_stats = pd.concat([self.df_phase1_stats, df_Q_stats], axis=1)
         self.df_phase1_stats.index = df_phase1.index
 
         if compute_contributions:
-            Q_contributions, T2_contributions = self._compute_contributions(df_phase1, df_transformed)
+            # n0te: should _compute_contributions be called on df_PCA_transformed instead?
+            Q_contributions, T2_contributions = self._compute_contributions(df_phase1)
             self.df_T2_contributions = pd.DataFrame(T2_contributions, columns=df_phase1.columns, index=df_phase1.index)
             self.df_Q_contributions = pd.DataFrame(Q_contributions, columns=df_phase1.columns, index=df_phase1.index)
 
+        self.is_fitted = True
         return self
 
     def predict(self, df_phase2: pd.DataFrame):
@@ -655,7 +661,25 @@ class PCAModelChart(HotellingT2Chart):
         df_phase2_stats.index = df_phase2.index
         return df_phase2_stats
 
-    def _compute_contributions(self, df_phase1, df_transformed):
+    def get_contributions(self, df: pd.DataFrame):
+        """
+        Computes contributions for an arbitrary dataframe (phase 1 or 2). Requires fit() to be run first,
+        as principal components and scalers need to be estimated.
+
+        :param df: the data observations for the given phase
+        :return: dataframe of contributions
+        """
+        assert self.is_fitted, "Model not fitted. Run fit() method first."
+        df_transformed = apply_standardize_and_PCA(df, self.scaler, self.PCA)
+        df_transformed = pd.DataFrame(df_transformed[:, : self.n_components_to_retain])
+        Q_contributions, T2_contributions = self._compute_contributions(df_transformed)
+        T2_col_names = ["T2_contribution_" + col for col in df.columns]
+        Q_col_names = ["Q_contribution_" + col for col in df.columns]
+        df_T2_contributions = pd.DataFrame(T2_contributions, columns=T2_col_names, index=df.index)
+        df_Q_contributions = pd.DataFrame(Q_contributions, columns=Q_col_names, index=df.index)
+        return pd.concat([df_T2_contributions, df_Q_contributions], axis=1)
+
+    def _compute_contributions(self, df_phase1):
         input_dim = df_phase1.shape[1]
         T2_contributions = np.zeros_like(df_phase1, dtype=float)
         Q_contributions = np.zeros_like(df_phase1, dtype=float)
@@ -740,8 +764,8 @@ class PCAModelChart(HotellingT2Chart):
         df_phase2_results = self.predict(df_phase2)
         T2_outlier_percentage = 100 * df_phase2_results["cumulated_prop_outside_CL_T2"].tail(1).squeeze()
         Q_outlier_percentage = 100 * df_phase2_results["cumulated_prop_outside_CL_Q"].tail(1).squeeze()
-        T_title = f"$T^2$-chart\n$\\alpha$ = {100*self.alpha:.2f} %, phase 2 samples outside control limit: {T2_outlier_percentage:.2f} %"
-        Q_title = f"Q-chart\n$\\alpha$ = {100*self.alpha:.2f} %, phase 2 samples outside control limit: {Q_outlier_percentage:.2f} %"
+        T_title = f"$T^2$-chart\n$\\alpha$ = {100 * self.alpha:.2f} %, phase 2 samples outside control limit: {T2_outlier_percentage:.2f} %"
+        Q_title = f"Q-chart\n$\\alpha$ = {100 * self.alpha:.2f} %, phase 2 samples outside control limit: {Q_outlier_percentage:.2f} %"
         fig, axs = self._plot_two_phases_multivariate(
             self.df_phase1_stats,
             df_phase2_results,
@@ -766,12 +790,12 @@ class EWMAChart(BaseControlChart, ControlChartPlotMixin):
     """
 
     def __init__(
-        self,
-        n_sample_size: int = 1,
-        L_control_limit_width: float = 2.7,
-        lambda_: float = 0.1,
-        mu_process_target: Optional[float] = None,
-        sigma: Optional[float] = None,
+            self,
+            n_sample_size: int = 1,
+            L_control_limit_width: float = 2.7,
+            lambda_: float = 0.1,
+            mu_process_target: Optional[float] = None,
+            sigma: Optional[float] = None,
     ):
         super().__init__(n_sample_size=n_sample_size)
         assert self.n_sample_size > 0, "Sample/subgroup size must be greater than 0."

@@ -21,7 +21,9 @@ df_phase2 = pd.DataFrame(
     )
 )
 
+
 chart = PCAModelChart(n_sample_size=1).fit(df_phase1=df_phase1, n_components_to_retain=3, verbose=True)
+chart.get_contributions(df_phase2)
 print(chart.df_contributions)
 chart.plot_phase1_and_2(df_phase2)
 print(chart.predict(df_phase2))
