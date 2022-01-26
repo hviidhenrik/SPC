@@ -11,7 +11,6 @@ df_phase1 = pd.DataFrame(
     }
 )
 # np.random.seed(1234)
-#
 N = 10
 df_phase2 = pd.DataFrame(
     dict(
