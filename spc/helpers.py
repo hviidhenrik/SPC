@@ -8,7 +8,7 @@ import sklearn.decomposition
 import sklearn.preprocessing
 from statsmodels.tsa.stattools import acf, pacf
 
-from phdspc.definitions import *
+from spc.definitions import *
 
 
 def vprint(verbose: Union[bool, int], str_to_print: str, **kwargs):

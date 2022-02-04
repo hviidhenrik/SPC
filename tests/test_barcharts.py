@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 from pandas._testing import assert_frame_equal, assert_series_equal
 
-from phdspc.core import *
+from spc.core import *
 
 
 def sd(values):

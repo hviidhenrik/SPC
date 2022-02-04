@@ -1,8 +1,9 @@
-from phdspc.core import *
-from phdspc.helpers import *
+from spc.core import *
+from spc.helpers import *
 
 plt.style.use("seaborn")
 
+# fmt: off
 df_phase1 = pd.DataFrame(
     {
         "x1": [1, 2, 3, 1, 2, 3, 5, 4, 3, 5, 6, 7, 5, 3, 1, 2, 3, 2, 1, 3, 2],
@@ -10,6 +11,8 @@ df_phase1 = pd.DataFrame(
         "x3": [13, 24, 33, 37, 22, 18, 25, 37, 23, 35, 36, 16, 25, 26, 11, 33, 22, 11, 24, 27, 28],
     }
 )
+# fmt: on
+
 # np.random.seed(1234)
 #
 N = 10

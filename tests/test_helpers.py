@@ -4,7 +4,7 @@ Unit tests go here
 import pytest
 from pandas._testing import assert_frame_equal
 
-from phdspc.helpers import *
+from spc.helpers import *
 
 
 def test_flatten_list():

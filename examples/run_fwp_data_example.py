@@ -1,5 +1,5 @@
-from phdspc.core import *
-from phdspc.helpers import *
+from spc.core import *
+from spc.helpers import *
 
 plt.style.use("seaborn")
 path = "C:/datasets/SSV feedwater pumps/all tags/SPC/"

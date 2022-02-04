@@ -2,8 +2,8 @@ from abc import abstractmethod
 
 from scipy.stats import beta, chi2, f
 
-from phdspc.constants import *
-from phdspc.helpers import *
+from spc.constants import *
+from spc.helpers import *
 
 
 class BaseControlChart(ControlChartPlotMixin):
@@ -300,10 +300,10 @@ class MEWMAChart(BaseControlChart, ControlChartPlotMixin):
     """
 
     def __init__(
-            self,
-            n_sample_size: int = 1,
-            lambda_: float = 0.1,
-            sigma: Optional[np.ndarray] = None,
+        self,
+        n_sample_size: int = 1,
+        lambda_: float = 0.1,
+        sigma: Optional[np.ndarray] = None,
     ):
         super().__init__(n_sample_size=n_sample_size)
         assert self.n_sample_size > 0, "Sample/subgroup size must be greater than 0."
@@ -345,7 +345,7 @@ class MEWMAChart(BaseControlChart, ControlChartPlotMixin):
             z_i = self.lambda_ * x_i + (1 - self.lambda_) * Z[i - 1]  # eq: 11.30
             Z.append(z_i)
             sigma_i = (
-                    (self.lambda_ / (2 - self.lambda_)) * (1 - (1 - self.lambda_) ** (2 * i)) * self.sigma
+                (self.lambda_ / (2 - self.lambda_)) * (1 - (1 - self.lambda_) ** (2 * i)) * self.sigma
             )  # eq: 11.32
             T2.append(multiply_matrices(z_i.transpose(), np.linalg.inv(sigma_i), z_i))  # eq: 11.31
 
@@ -362,14 +362,14 @@ class MEWMAChart(BaseControlChart, ControlChartPlotMixin):
         return self
 
     def fit_on_PCs(
-            self,
-            df_phase1: pd.DataFrame,
-            df_phase2: pd.DataFrame,
-            n_components: int = None,
-            PC_variance_explained_min: float = 0.9,
-            verbose: bool = False,
-            *args,
-            **kwargs,
+        self,
+        df_phase1: pd.DataFrame,
+        df_phase2: pd.DataFrame,
+        n_components: int = None,
+        PC_variance_explained_min: float = 0.9,
+        verbose: bool = False,
+        *args,
+        **kwargs,
     ):
         df_transformed, pca, scaler = standardize_and_PCA(df_phase1, n_components=n_components)
         if n_components is None:
@@ -434,12 +434,12 @@ class HotellingT2Chart(BaseControlChart, ControlChartPlotMixin):
         self.df_contributions = None
 
     def fit(
-            self,
-            df_phase1: pd.DataFrame,
-            compute_contributions: bool = True,
-            verbose=False,
-            *args,
-            **kwargs,
+        self,
+        df_phase1: pd.DataFrame,
+        compute_contributions: bool = True,
+        verbose=False,
+        *args,
+        **kwargs,
     ):
         self.m_samples = df_phase1.shape[0]
         self.input_dim = df_phase1.shape[1]
@@ -507,7 +507,7 @@ class HotellingT2Chart(BaseControlChart, ControlChartPlotMixin):
 
     @staticmethod
     def _compute_T2_value_given_xbar_and_sigma_inv(
-            x: np.ndarray, x_bar: np.ndarray = None, sigma_inverse: np.ndarray = None
+        x: np.ndarray, x_bar: np.ndarray = None, sigma_inverse: np.ndarray = None
     ):
         assert x.shape == x_bar.shape, f"The shape of x ({x.shape}) must be the same as x_bar: {x_bar.shape}"
         return multiply_matrices((x - x_bar).T, sigma_inverse, (x - x_bar))
@@ -578,14 +578,14 @@ class PCAModelChart(HotellingT2Chart):
         self.df_Q_contributions = None
 
     def fit(
-            self,
-            df_phase1: pd.DataFrame,
-            n_components_to_retain: int = None,
-            PC_variance_explained_min: float = 0.9,
-            compute_contributions: bool = True,
-            verbose=False,
-            *args,
-            **kwargs,
+        self,
+        df_phase1: pd.DataFrame,
+        n_components_to_retain: int = None,
+        PC_variance_explained_min: float = 0.9,
+        compute_contributions: bool = True,
+        verbose=False,
+        *args,
+        **kwargs,
     ):
         self.n_components_to_retain = n_components_to_retain
         self.m_samples = df_phase1.shape[0]
@@ -790,12 +790,12 @@ class EWMAChart(BaseControlChart, ControlChartPlotMixin):
     """
 
     def __init__(
-            self,
-            n_sample_size: int = 1,
-            L_control_limit_width: float = 2.7,
-            lambda_: float = 0.1,
-            mu_process_target: Optional[float] = None,
-            sigma: Optional[float] = None,
+        self,
+        n_sample_size: int = 1,
+        L_control_limit_width: float = 2.7,
+        lambda_: float = 0.1,
+        mu_process_target: Optional[float] = None,
+        sigma: Optional[float] = None,
     ):
         super().__init__(n_sample_size=n_sample_size)
         assert self.n_sample_size > 0, "Sample/subgroup size must be greater than 0."

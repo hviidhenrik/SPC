@@ -1,8 +1,8 @@
 from setuptools import find_packages, setup
 
 setup(
-    name="phd-spc-methods",
-    version="0.8.0",
+    name="phd-spc",
+    version="0.9.0",
     description="Python package with selected SPC functions",
     author="Henrik Hviid Hansen",
     classifiers=[
