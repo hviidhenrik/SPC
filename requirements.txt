@@ -4,5 +4,4 @@ pandas
 pytest
 scikit_learn
 scipy
-setuptools
 statsmodels

@@ -414,7 +414,7 @@ class MEWMAChart(BaseControlChart, ControlChartPlotMixin):
         """
         assert self.is_fitted, "No stats to plot. Run fit() first on suitable phase 2 data"
         self._plot_single_phase_univariate(self.df_phase2_stats)
-        plt.title(fr"Phase 2 MEWMA-chart, $\lambda = {self.lambda_}$")
+        plt.title(rf"Phase 2 MEWMA-chart, $\lambda = {self.lambda_}$")
         plt.ylabel(r"Sample Hotelling $T^2_i$")
         plt.xlabel("Sample [i]")
 
@@ -858,7 +858,7 @@ class EWMAChart(BaseControlChart, ControlChartPlotMixin):
         """
         assert self.is_fitted, "No stats to plot. Run fit() first on suitable phase 2 data"
         self._plot_single_phase_univariate(self.df_phase2_stats)
-        plt.title(fr"Phase 2 EWMA-chart, $\lambda = {self.lambda_}$, L = {self.L_control_limit_width}")
+        plt.title(rf"Phase 2 EWMA-chart, $\lambda = {self.lambda_}$, L = {self.L_control_limit_width}")
         plt.ylabel(r"Sample EWMA value [$Z_i$]")
         plt.xlabel("Sample [i]")
 
