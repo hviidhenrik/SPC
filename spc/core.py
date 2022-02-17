@@ -14,6 +14,7 @@ class BaseControlChart(ControlChartPlotMixin):
         self.center_line = None
         self.stat_name = None
         self.n_sample_size = n_sample_size
+        self.hyperparameters = None
 
     @abstractmethod
     def fit(self, df_phase1: pd.DataFrame, *args, **kwargs):
@@ -635,6 +636,15 @@ class PCAModelChart(HotellingT2Chart):
             self.df_Q_contributions = pd.DataFrame(Q_contributions, columns=df_phase1.columns, index=df_phase1.index)
 
         self.is_fitted = True
+
+        self.hyperparameters = {
+            "n_sample_size": self.n_sample_size,
+            "n_components_to_retain": self.n_components_to_retain,
+            "alpha": self.alpha,
+            "PC_variance_explained_min": PC_variance_explained_min,
+            "compute_contributions": compute_contributions
+        }
+
         return self
 
     def predict(self, df_phase2: pd.DataFrame):

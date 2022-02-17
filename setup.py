@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="phd-spc",
-    version="0.9.0",
+    version="0.9.1",
     description="Python package with selected SPC functions",
     author="Henrik Hviid Hansen",
     packages=find_packages(),
