@@ -47,8 +47,7 @@ def test_multiply_matrices():
 
 
 @pytest.mark.parametrize(
-    "variance_explain_min, expected_num_of_PCs_to_retain",
-    [[0.1, 1], [0.55, 2], [0.9, 3], [0.95, 3]],
+    "variance_explain_min, expected_num_of_PCs_to_retain", [[0.1, 1], [0.55, 2], [0.9, 3], [0.95, 3]],
 )
 def test_get_num_of_PCs_to_retain(dataframe_for_PCAModel_phase1, variance_explain_min, expected_num_of_PCs_to_retain):
     _, PCA_object, _ = standardize_and_PCA(df=dataframe_for_PCAModel_phase1)

@@ -46,8 +46,7 @@ def test_xbarchart_fit_correct_values_sample_size_4_and_range():
 def test_get_df_with_sample_means_and_variability_sample_size_2_and_range():
     df_test_input = pd.DataFrame({"sample_id": [1, 1, 2, 2, 3, 3, 4], "x1": [1, 2, 2, 3, 3, 4, 5]})
     df_expected = pd.DataFrame(
-        {"sample_mean": [1.5, 2.5, 3.5, 5], "sample_variability": [1, 1, 1, 0]},
-        index=[1, 2, 3, 4],
+        {"sample_mean": [1.5, 2.5, 3.5, 5], "sample_variability": [1, 1, 1, 0]}, index=[1, 2, 3, 4],
     )
     chart = XBarChart(n_sample_size=2, variability_estimator="range").fit(df_test_input)
     df_expected.index.name = "sample_id"
@@ -61,10 +60,7 @@ def test_get_df_with_sample_means_and_variability_sample_size_12_and_std():
     df_expected = pd.DataFrame(
         {
             "sample_mean": [6.5, 18.5],
-            "sample_variability": [
-                np.std(values[0:12], ddof=1),
-                np.std(values[12:24], ddof=1),
-            ],
+            "sample_variability": [np.std(values[0:12], ddof=1), np.std(values[12:24], ddof=1), ],
         },
         index=[1, 2],
     )
@@ -80,8 +76,7 @@ def test_group_samples_and_compute_stats():
 
     df_output = fitted._group_samples_and_compute_stats(df_test_input)
     df_expected = pd.DataFrame(
-        {"sample_mean": [1.5, 3.5, 2.5, 2], "sample_variability": [1, 1, 1, 0]},
-        index=[1, 2, 3, 4],
+        {"sample_mean": [1.5, 3.5, 2.5, 2], "sample_variability": [1, 1, 1, 0]}, index=[1, 2, 3, 4],
     )
     df_expected.index.name = "sample_id"
     assert_frame_equal(df_output, df_expected, check_dtype=False)
@@ -93,12 +88,7 @@ def test_collect_results_df_correct_output_dataframe():
 
     df_output = fitted._collect_results_df(fitted.df_phase1_stats)
     df_expected = pd.DataFrame(
-        {
-            fitted.stat_name: [1.5, 3.5, 2.5],
-            "LCL": [0.62] * 3,
-            "UCL": [4.38] * 3,
-            "outside_CL": [False] * 3,
-        },
+        {fitted.stat_name: [1.5, 3.5, 2.5], "LCL": [0.62] * 3, "UCL": [4.38] * 3, "outside_CL": [False] * 3, },
         index=[1, 2, 3],
     )
     df_expected.index.name = "sample_id"
@@ -188,12 +178,9 @@ def test_determine_varability_estimator_correct_output(test_variability_estimato
 
 
 @pytest.mark.parametrize(
-    "test_bad_variability_estimator_string",
-    ["r", "a", "s", "mkaæomkm", "foo", "variance", None, -1, True, False],
+    "test_bad_variability_estimator_string", ["r", "a", "s", "mkaæomkm", "foo", "variance", None, -1, True, False],
 )
-def test_determine_varability_estimator_bad_input_fails(
-        test_bad_variability_estimator_string,
-):
+def test_determine_varability_estimator_bad_input_fails(test_bad_variability_estimator_string, ):
     with pytest.raises(Exception):
         XBarChart(variability_estimator=test_bad_variability_estimator_string)
 

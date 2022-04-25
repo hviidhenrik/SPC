@@ -301,10 +301,7 @@ class MEWMAChart(BaseControlChart, ControlChartPlotMixin):
     """
 
     def __init__(
-        self,
-        n_sample_size: int = 1,
-        lambda_: float = 0.1,
-        sigma: Optional[np.ndarray] = None,
+        self, n_sample_size: int = 1, lambda_: float = 0.1, sigma: Optional[np.ndarray] = None,
     ):
         super().__init__(n_sample_size=n_sample_size)
         assert self.n_sample_size > 0, "Sample/subgroup size must be greater than 0."
@@ -351,11 +348,7 @@ class MEWMAChart(BaseControlChart, ControlChartPlotMixin):
             T2.append(multiply_matrices(z_i.transpose(), np.linalg.inv(sigma_i), z_i))  # eq: 11.31
 
         Z.pop(0)
-        df_Z = pd.DataFrame(
-            Z,
-            columns=[f"Z{i}" for i in range(1, self.input_dim + 1)],
-            index=df_phase2.index,
-        )
+        df_Z = pd.DataFrame(Z, columns=[f"Z{i}" for i in range(1, self.input_dim + 1)], index=df_phase2.index,)
         self.df_phase2_stats = df_phase2.copy()
         self.df_phase2_stats = pd.concat([self.df_phase2_stats, df_Z], axis=1)
         self.df_phase2_stats[self.stat_name] = T2
@@ -386,10 +379,7 @@ class MEWMAChart(BaseControlChart, ControlChartPlotMixin):
         df_phase2_transformed = df_phase2_transformed[:, :n_components]
         # TODO try to estimate sigma on phase 1 data
         self.sigma = None  # the standardization and PCA changes the original correlations, so we can't use those
-        self.df_PCs = pd.DataFrame(
-            df_phase2_transformed,
-            columns=[f"PC{i}" for i in range(1, n_components + 1)],
-        )
+        self.df_PCs = pd.DataFrame(df_phase2_transformed, columns=[f"PC{i}" for i in range(1, n_components + 1)],)
         self.fit(self.df_PCs, verbose=verbose)
 
     def compute_delta(self, mu_shifted: np.ndarray):
@@ -435,12 +425,7 @@ class HotellingT2Chart(BaseControlChart, ControlChartPlotMixin):
         self.df_contributions = None
 
     def fit(
-        self,
-        df_phase1: pd.DataFrame,
-        compute_contributions: bool = True,
-        verbose=False,
-        *args,
-        **kwargs,
+        self, df_phase1: pd.DataFrame, compute_contributions: bool = True, verbose=False, *args, **kwargs,
     ):
         self.m_samples = df_phase1.shape[0]
         self.input_dim = df_phase1.shape[1]
@@ -567,8 +552,7 @@ class HotellingT2Chart(BaseControlChart, ControlChartPlotMixin):
 
 
 class PCAModelChart(HotellingT2Chart):
-    def __init__(self, n_sample_size: int = 1, alpha: float = 0.05,
-                 combine_T2_and_Q: bool = True):
+    def __init__(self, n_sample_size: int = 1, alpha: float = 0.05, combine_T2_and_Q: bool = True):
         super().__init__(n_sample_size=n_sample_size, alpha=alpha)
         self.scaler = None
         self.PCA = None
@@ -622,8 +606,7 @@ class PCAModelChart(HotellingT2Chart):
         self.df_phase1_stats["Q"] = Q
         self.UCL_Q = self._compute_Q_UCL(Q)
         if self.combine_T2_and_Q:
-            TQ = (np.sqrt(np.exp(-self.UCL/self.df_phase1_stats["T2"])) +
-                  np.sqrt(np.exp(-self.UCL_Q/Q)))/2
+            TQ = (np.sqrt(np.exp(-self.UCL / self.df_phase1_stats["T2"])) + np.sqrt(np.exp(-self.UCL_Q / Q))) / 2
             TQ_UCL = 0.6065  # from equating the statistics and their UCL's
             Q, self.UCL_Q = TQ, TQ_UCL
         df_Q_stats = pd.DataFrame(
@@ -649,7 +632,7 @@ class PCAModelChart(HotellingT2Chart):
             "n_components_to_retain": self.n_components_to_retain,
             "alpha": self.alpha,
             "PC_variance_explained_min": PC_variance_explained_min,
-            "compute_contributions": compute_contributions
+            "compute_contributions": compute_contributions,
         }
 
         return self
@@ -660,9 +643,8 @@ class PCAModelChart(HotellingT2Chart):
         df_phase2_stats = super().predict(df_transformed)
         Q = self._compute_Q_values(df_phase2)
         if self.combine_T2_and_Q:
-            TQ = (np.sqrt(np.exp(-self.UCL/df_phase2_stats["T2"])) +
-                  np.sqrt(np.exp(-self.UCL_Q/Q)))/2
-            TQ_UCL = 0.6065  # from equating the statistics and their UCL's
+            TQ = (np.sqrt(np.exp(-self.UCL / df_phase2_stats["T2"])) + np.sqrt(np.exp(-self.UCL_Q / Q))) / 2
+            TQ_UCL = 0.6065  # from equating the statistics and their UCL's => exp(-1) = 0.6065
             Q, self.UCL_Q = TQ, TQ_UCL
         df_phase2_stats["Q"] = Q
         df_Q_stats = pd.DataFrame(

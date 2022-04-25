@@ -64,9 +64,7 @@ def standardize_and_PCA(df: pd.DataFrame, n_components: Optional[int] = None):
 
 
 def apply_standardize_and_PCA(
-    df: pd.DataFrame,
-    scaler: sklearn.preprocessing._data.StandardScaler,
-    pca: sklearn.decomposition._pca.PCA,
+    df: pd.DataFrame, scaler: sklearn.preprocessing._data.StandardScaler, pca: sklearn.decomposition._pca.PCA,
 ):
     """
     This function should be used for new data to be transformed using an already estimated standardize and
@@ -126,11 +124,7 @@ def plot_features_acf(df, gridsize: Tuple[int, int] = None, nlags: int = 50, cor
             for col in range(ncols):
                 col_name = col_names[col_counter]
                 axs[row, col].stem(
-                    df_acf[col_name],
-                    linefmt="grey",
-                    markerfmt="",
-                    bottom=0,
-                    basefmt="r--",
+                    df_acf[col_name], linefmt="grey", markerfmt="", bottom=0, basefmt="r--",
                 )
                 axs[row, col].set_title(col_name)
                 col_counter += 1
@@ -148,9 +142,7 @@ class ControlChartPlotMixin:
 
     @staticmethod
     def _plot_scalar_or_array(
-        x: Union[float, np.ndarray, List[float]],
-        ax: matplotlib.axes._subplots.Axes,
-        color="red",
+        x: Union[float, np.ndarray, List[float]], ax: matplotlib.axes._subplots.Axes, color="red",
     ):
         if isinstance(x, (np.ndarray, pd.Series, list)):
             ax.plot(x, color=color, linestyle="dashed")
@@ -245,10 +237,7 @@ class ControlChartPlotMixin:
         return fig, axs
 
     def _plot_two_phases(
-        self,
-        df_phase1_results: pd.DataFrame,
-        df_phase2_results: pd.DataFrame,
-        y_limit_offsets=(0.95, 1.05),
+        self, df_phase1_results: pd.DataFrame, df_phase2_results: pd.DataFrame, y_limit_offsets=(0.95, 1.05),
     ):
         fig, ax = plt.subplots(1, 1)
         df = pd.concat([df_phase1_results, df_phase2_results])

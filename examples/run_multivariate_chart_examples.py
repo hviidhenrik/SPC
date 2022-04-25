@@ -17,11 +17,7 @@ df_phase1 = pd.DataFrame(
 #
 N = 10
 df_phase2 = pd.DataFrame(
-    dict(
-        x1=np.random.normal(size=N, scale=0.1),
-        x2=np.random.normal(size=N),
-        x3=np.random.normal(size=N),
-    )
+    dict(x1=np.random.normal(size=N, scale=0.1), x2=np.random.normal(size=N), x3=np.random.normal(size=N),)
 )
 
 
