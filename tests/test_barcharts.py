@@ -1,7 +1,6 @@
 """
 Unit tests go here
 """
-import pandas as pd
 import pytest
 from pandas._testing import assert_frame_equal, assert_series_equal
 
@@ -193,7 +192,7 @@ def test_determine_varability_estimator_correct_output(test_variability_estimato
     ["r", "a", "s", "mkaæomkm", "foo", "variance", None, -1, True, False],
 )
 def test_determine_varability_estimator_bad_input_fails(
-    test_bad_variability_estimator_string,
+        test_bad_variability_estimator_string,
 ):
     with pytest.raises(Exception):
         XBarChart(variability_estimator=test_bad_variability_estimator_string)
@@ -460,38 +459,19 @@ def test_PCAModelChart_fit_correct_values():
     to do the T^2 calculations on the principal components.
     :return:
     """
+    # fmt: off
     df_phase1 = pd.DataFrame(
         {
             "x1": [1, 2, 3, 1, 2, 3, 5, 4, 3, 5, 6, 7, 5, 3, 1, 2, 3, 2, 1, 3, 2],
             "x2": [3, 4, 3, 7, 2, 8, 5, 7, 3, 5, 6, 6, 5, 6, 1, 3, 2, 1, 4, 7, 8],
-            "x3": [
-                13,
-                24,
-                33,
-                37,
-                22,
-                18,
-                25,
-                37,
-                23,
-                35,
-                36,
-                16,
-                25,
-                26,
-                11,
-                33,
-                22,
-                11,
-                24,
-                27,
-                28,
-            ],
+            "x3": [13, 24, 33, 37, 22, 18, 25, 37, 23, 35, 36, 16, 25, 26, 11,
+                   33, 22, 11, 24, 27, 28],
         }
     )
-
-    chart = PCAModelChart(n_sample_size=1, alpha=0.05).fit(df_phase1=df_phase1, n_components_to_retain=2)
-
+    chart = PCAModelChart(n_sample_size=1, alpha=0.05, combine_T2_and_Q=False)
+    chart_combined = PCAModelChart(n_sample_size=1, alpha=0.05, combine_T2_and_Q=True)
+    chart.fit(df_phase1=df_phase1, n_components_to_retain=2)
+    chart_combined.fit(df_phase1=df_phase1, n_components_to_retain=2)
     output_T2 = chart.df_phase1_stats["T2"].round(3)
     output_Q = chart.df_phase1_stats["Q"].round(3)
     output_T2_UCL = chart.df_phase1_stats["UCL_T2"].mean().round(3)
@@ -500,55 +480,16 @@ def test_PCAModelChart_fit_correct_values():
     expected_T2_UCL = 5.393
     expected_Q_UCL = 1.852
     expected_T2 = pd.Series(
-        [
-            2.148,
-            0.375,
-            0.239,
-            5.399,
-            0.952,
-            0.172,
-            1.351,
-            2.283,
-            0.285,
-            1.244,
-            2.946,
-            7.842,
-            1.351,
-            0.173,
-            4.095,
-            1.081,
-            0.723,
-            3.781,
-            1.400,
-            0.537,
-            1.625,
-        ]
+        [2.148, 0.375, 0.239, 5.399, 0.952, 0.172, 1.351, 2.283, 0.285, 1.244, 2.946, 7.842,
+         1.351, 0.173, 4.095, 1.081, 0.723, 3.781, 1.400, 0.537, 1.625,
+         ]
     )
     expected_Q = pd.Series(
-        [
-            0.420,
-            0.001,
-            1.260,
-            0.056,
-            0.256,
-            2.908,
-            0.016,
-            0.037,
-            0.144,
-            0.757,
-            0.554,
-            0.359,
-            0.016,
-            0.181,
-            0.012,
-            0.961,
-            0.420,
-            0.001,
-            0.030,
-            0.482,
-            1.220,
-        ]
+        [0.420, 0.001, 1.260, 0.056, 0.256, 2.908, 0.016, 0.037, 0.144, 0.757, 0.554, 0.359,
+         0.016, 0.181, 0.012, 0.961, 0.420, 0.001, 0.030, 0.482, 1.220,
+         ]
     )
+    # fmt: on
     expected_T2.name = "T2"
     expected_Q.name = "Q"
     assert_series_equal(output_T2, expected_T2)
@@ -557,37 +498,71 @@ def test_PCAModelChart_fit_correct_values():
     assert output_Q_UCL == expected_Q_UCL
 
 
-def test_compute_T2_contributions():
+def test_PCAModelChart_predict_correct_values():
+    # fmt: off
     df_phase1 = pd.DataFrame(
         {
             "x1": [1, 2, 3, 1, 2, 3, 5, 4, 3, 5, 6, 7, 5, 3, 1, 2, 3, 2, 1, 3, 2],
             "x2": [3, 4, 3, 7, 2, 8, 5, 7, 3, 5, 6, 6, 5, 6, 1, 3, 2, 1, 4, 7, 8],
-            "x3": [
-                13,
-                24,
-                33,
-                37,
-                22,
-                18,
-                25,
-                37,
-                23,
-                35,
-                36,
-                16,
-                25,
-                26,
-                11,
-                33,
-                22,
-                11,
-                24,
-                27,
-                28,
-            ],
+            "x3": [13, 24, 33, 37, 22, 18, 25, 37, 23, 35, 36, 16, 25, 26, 11,
+                   33, 22, 11, 24, 27, 28],
+        }
+    )
+    chart = PCAModelChart(n_sample_size=1, alpha=0.05, combine_T2_and_Q=False)
+    chart_combined = PCAModelChart(n_sample_size=1, alpha=0.05, combine_T2_and_Q=True)
+    chart.fit(df_phase1=df_phase1, n_components_to_retain=2)
+    chart_combined.fit(df_phase1=df_phase1, n_components_to_retain=2)
+    preds = chart.predict(df_phase2=df_phase1)
+    preds_combined = chart_combined.predict(df_phase2=df_phase1)
+
+    output_T2 = preds["T2"]
+    output_T2_UCL = preds["UCL_T2"][0]
+    output_Q = preds["Q"]
+    output_Q_UCL = preds["UCL_Q"][0]
+    output_TQ = preds_combined["Q"]
+    output_TQ_UCL = preds_combined["UCL_Q"][0]
+
+    expected_T2_UCL = 7.768
+    expected_Q_UCL = 1.852
+    expected_TQ_UCL = 0.6065
+    expected_T2 = pd.Series(
+        [2.148, 0.375, 0.239, 5.399, 0.952, 0.172, 1.351, 2.283, 0.285, 1.244, 2.946, 7.842,
+         1.351, 0.173, 4.095, 1.081, 0.723, 3.781, 1.400, 0.537, 1.625,
+         ]
+    )
+    expected_Q = pd.Series(
+        [0.420, 0.001, 1.260, 0.056, 0.256, 2.908, 0.016, 0.037, 0.144, 0.757, 0.554, 0.359,
+         0.016, 0.181, 0.012, 0.961, 0.420, 0.001, 0.030, 0.482, 1.220,
+         ]
+    )
+    expected_TQ = pd.Series(
+        [0.325, 0.0, 0.393, 0.246, 0.161, 0.45, 0.028, 0.091, 0.061, 0.357, 0.423, 0.52, 0.028,
+         0.094, 0.194, 0.378, 0.245, 0.179, 0.031, 0.267, 0.436]
+    )
+    # fmt: on
+    expected_T2.name = "T2"
+    expected_Q.name = "Q"
+    expected_TQ.name = "Q"
+    assert_series_equal(output_T2.round(3), expected_T2)
+    assert_series_equal(output_Q.round(3), expected_Q)
+    assert_series_equal(output_TQ.round(3), expected_TQ)
+    assert output_T2_UCL.round(3) == expected_T2_UCL
+    assert output_Q_UCL.round(3) == expected_Q_UCL
+    assert output_TQ_UCL == expected_TQ_UCL
+
+
+def test_compute_T2_contributions():
+    # fmt: off
+    df_phase1 = pd.DataFrame(
+        {
+            "x1": [1, 2, 3, 1, 2, 3, 5, 4, 3, 5, 6, 7, 5, 3, 1, 2, 3, 2, 1, 3, 2],
+            "x2": [3, 4, 3, 7, 2, 8, 5, 7, 3, 5, 6, 6, 5, 6, 1, 3, 2, 1, 4, 7, 8],
+            "x3": [13, 24, 33, 37, 22, 18, 25, 37, 23, 35, 36, 16, 25, 26, 11,
+                   33, 22, 11, 24, 27, 28],
         }
     )
     df_expected = pd.DataFrame(dict(PC1=[2.139, 0.174, 0.006], PC2=[0.01, 0.2, 0.233], PC3=[0.832, 0.002, 2.497]))
     chart = PCAModelChart(n_sample_size=1).fit(df_phase1=df_phase1, n_components_to_retain=3, verbose=True)
     df_output = chart.df_contributions.iloc[0:3].round(3)
     assert_frame_equal(df_output, df_expected, check_dtype=False)
+    # fmt: on

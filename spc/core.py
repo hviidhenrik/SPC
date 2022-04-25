@@ -567,7 +567,8 @@ class HotellingT2Chart(BaseControlChart, ControlChartPlotMixin):
 
 
 class PCAModelChart(HotellingT2Chart):
-    def __init__(self, n_sample_size: int = 1, alpha: float = 0.05):
+    def __init__(self, n_sample_size: int = 1, alpha: float = 0.05,
+                 combine_T2_and_Q: bool = True):
         super().__init__(n_sample_size=n_sample_size, alpha=alpha)
         self.scaler = None
         self.PCA = None
@@ -577,6 +578,7 @@ class PCAModelChart(HotellingT2Chart):
         self.scores = None
         self.df_T2_contributions = None
         self.df_Q_contributions = None
+        self.combine_T2_and_Q = combine_T2_and_Q
 
     def fit(
         self,
@@ -619,6 +621,11 @@ class PCAModelChart(HotellingT2Chart):
         Q = self._compute_Q_values(df_phase1)  # PCA is done inside this function, so Q is done on the PC's
         self.df_phase1_stats["Q"] = Q
         self.UCL_Q = self._compute_Q_UCL(Q)
+        if self.combine_T2_and_Q:
+            TQ = (np.sqrt(np.exp(-self.UCL/self.df_phase1_stats["T2"])) +
+                  np.sqrt(np.exp(-self.UCL_Q/Q)))/2
+            TQ_UCL = 0.6065  # from equating the statistics and their UCL's
+            Q, self.UCL_Q = TQ, TQ_UCL
         df_Q_stats = pd.DataFrame(
             dict(
                 UCL_Q=self.UCL_Q,
@@ -652,6 +659,11 @@ class PCAModelChart(HotellingT2Chart):
         df_transformed = pd.DataFrame(df_transformed[:, : self.n_components_to_retain])
         df_phase2_stats = super().predict(df_transformed)
         Q = self._compute_Q_values(df_phase2)
+        if self.combine_T2_and_Q:
+            TQ = (np.sqrt(np.exp(-self.UCL/df_phase2_stats["T2"])) +
+                  np.sqrt(np.exp(-self.UCL_Q/Q)))/2
+            TQ_UCL = 0.6065  # from equating the statistics and their UCL's
+            Q, self.UCL_Q = TQ, TQ_UCL
         df_phase2_stats["Q"] = Q
         df_Q_stats = pd.DataFrame(
             dict(
@@ -711,14 +723,26 @@ class PCAModelChart(HotellingT2Chart):
         self.loadings = self.PCA.components_.T[:, : self.n_components_to_retain]  # loadings from phase 1 data
         X = self.scaler.transform(df_raw)
         Xhat = multiply_matrices(self.scores, self.loadings.T)
-        Q = np.sum((X - Xhat) ** 2, axis=1)  # n0te: squared prediction error or E matrix in the slides. Is this right?
+        Q = np.sum((X - Xhat) ** 2, axis=1)  # E^T x E = SPE
         return Q
 
-    def _compute_Q_UCL(self, Q: np.ndarray):
-        g = np.var(Q, ddof=1) / (2 * np.mean(Q))  # scale factor
-        h = (2 * np.mean(Q) ** 2) / np.var(Q, ddof=1)  # degrees of freedom
-        percentile = chi2.ppf(q=1 - self.alpha, df=h)
-        self.UCL_Q = g * percentile
+    def _compute_Q_UCL(self, Q: np.ndarray, use_box_formula: bool = False):
+        """
+        Computes the upper control limit (UCL) on the Q-statistics (SPE).
+        Can use either the formula proposed by Box (1954) or Nomikos and MacGregor (1995).
+
+        :param Q: array of computed Q values
+        :param use_box_formula: use Box formula to compute UCL or not. Defaults to True.
+        :return: the calculated UCL
+        """
+        if use_box_formula:
+            print("Box formula for Q chart UCL not implemented yet")
+            pass
+        else:  # use Nomikos and MacGregor UCL:
+            g = np.var(Q, ddof=1) / (2 * np.mean(Q))  # scale factor
+            h = (2 * np.mean(Q) ** 2) / np.var(Q, ddof=1)  # degrees of freedom
+            percentile = chi2.ppf(q=1 - self.alpha, df=h)
+            self.UCL_Q = g * percentile
         return self.UCL_Q
 
     def plot_phase1(self):
