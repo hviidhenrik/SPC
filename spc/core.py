@@ -552,7 +552,7 @@ class HotellingT2Chart(BaseControlChart, ControlChartPlotMixin):
 
 
 class PCAModelChart(HotellingT2Chart):
-    def __init__(self, n_sample_size: int = 1, alpha: float = 0.05, combine_T2_and_Q: bool = True):
+    def __init__(self, n_sample_size: int = 1, alpha: float = 0.05, combine_T2_and_Q: bool = False):
         super().__init__(n_sample_size=n_sample_size, alpha=alpha)
         self.scaler = None
         self.PCA = None
