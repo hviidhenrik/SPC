@@ -764,7 +764,7 @@ class PCAModelChart(HotellingT2Chart):
 
         return self
 
-    def predict(self, df_phase2: pd.DataFrame, predict_proba=True):
+    def predict(self, df_phase2: pd.DataFrame, predict_proba: bool = True):
         """
         Uses the estimated phase 1 statistics from the fit() method to calculate phase 2 statistics.
         A dataframe will be returned with T^2, Q, UCL's for both, indicators whether they are outside the UCL
