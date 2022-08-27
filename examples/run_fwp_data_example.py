@@ -1,9 +1,13 @@
-from spc.core import *
-from spc.helpers import *
+import pandas as pd
+from matplotlib import pyplot as plt
+
+from spc.core import PCAModelChart
 
 plt.style.use("seaborn")
 path = "C:/datasets/SSV feedwater pumps/all tags/SPC/"
-df_phase1 = pd.read_csv(path + "data_pump_30_phase1_2015-2017_A.csv", index_col="timelocal")
+df_phase1 = pd.read_csv(
+    path + "data_pump_30_phase1_2015-2017_A.csv", index_col="timelocal"
+)
 df_phase2 = pd.read_csv(path + "data_pump_30_phase2_2017_A.csv", index_col="timelocal")
 
 df_phase1 = df_phase1.sample(frac=0.2).sort_index()

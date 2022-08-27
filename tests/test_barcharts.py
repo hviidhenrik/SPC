@@ -1,10 +1,12 @@
 """
 Unit tests go here
 """
+import numpy as np
+import pandas as pd
 import pytest
 from pandas._testing import assert_frame_equal, assert_series_equal
 
-from spc.core import *
+from spc.core import XBarChart, RChart, SChart, MEWMAChart, PCAModelChart, EWMAChart
 
 
 def sd(values):
@@ -219,20 +221,24 @@ def test_MEWMA_fit_correct_values():
     This test follows the results obtained and data used in the numerical example provided in the original
     article from 1992 by Lowry et al.: "A Multivariate Exponentially Weighted Moving Average Control Chart".
     """
+    # fmt: off
     df_phase2 = pd.DataFrame(
         {
             "x1": [-1.19, 0.12, -1.69, 0.3, 0.89, 0.82, -0.3, 0.63, 1.56, 1.46],
             "x2": [0.59, 0.9, 0.4, 0.46, -0.75, 0.98, 2.28, 1.75, 1.58, 3.05],
         }
     )
+    # fmt: on
     chart = MEWMAChart(lambda_=0.1, sigma=np.array([[1, 0.5], [0.5, 1]])).fit(df_phase2)
     T2_output = np.array(chart.df_phase2_stats["T2"]).round(2)
     Z1_output = np.array(chart.df_phase2_stats["Z1"]).round(2)
     Z2_output = np.array(chart.df_phase2_stats["Z2"]).round(2)
 
+    # fmt: off
     Z1_expected = np.array([-0.12, -0.1, -0.25, -0.2, -0.09, 0.0, -0.03, 0.04, 0.19, 0.32])
     Z2_expected = np.array([0.06, 0.14, 0.17, 0.2, 0.1, 0.19, 0.4, 0.53, 0.64, 0.88])
     T2_expected = np.array([3.29, 3.18, 7.37, 5.26, 1.09, 1.28, 5.66, 8.32, 9.64, 17.21])
+    # fmt: on
 
     assert (T2_output == T2_expected).all()
     assert (Z1_output == Z1_expected).all()
@@ -245,6 +251,7 @@ def test_MEWMA_compute_delta():
     """
     chart = MEWMAChart()
     chart.is_fitted = True
+    # fmt: off
     chart.sigma = np.array(
         [
             [1, 0.7, 0.9, 0.3, 0.2, 0.3],
@@ -255,6 +262,7 @@ def test_MEWMA_compute_delta():
             [0.3, 0.2, 0.1, 0.1, 0.1, 1],
         ]
     )
+    # fmt: on
     delta_output = np.round(chart.compute_delta(np.array([1] * 6)), 2)
     delta_expected = 1.86
     assert delta_output == delta_expected
@@ -264,171 +272,33 @@ def test_EWMA_fit_correct_values():
     """
     This test is based on the data and results of example 9.2 of Montgomery, p. 435-436.
     """
+    # fmt: off
     df_phase2_input = pd.DataFrame(
         {
-            "x1": [
-                9.45,
-                7.99,
-                9.29,
-                11.66,
-                12.16,
-                10.18,
-                8.04,
-                11.46,
-                9.2,
-                10.34,
-                9.03,
-                11.47,
-                10.51,
-                9.4,
-                10.08,
-                9.37,
-                10.62,
-                10.31,
-                8.52,
-                10.84,
-                10.9,
-                9.33,
-                12.29,
-                11.5,
-                10.6,
-                11.08,
-                10.38,
-                11.62,
-                11.31,
-                10.52,
-            ]
+            "x1": [9.45, 7.99, 9.29, 11.66, 12.16, 10.18, 8.04, 11.46, 9.2, 10.34, 9.03, 11.47, 10.51, 9.4, 10.08, 9.37,
+                   10.62,
+                   10.31, 8.52, 10.84, 10.9, 9.33, 12.29, 11.5, 10.6, 11.08, 10.38, 11.62, 11.31, 10.52,
+                   ]
         }
     )
-    Z_expected = [
-        9.94,
-        9.75,
-        9.7,
-        9.9,
-        10.13,
-        10.13,
-        9.92,
-        10.08,
-        9.99,
-        10.02,
-        9.92,
-        10.08,
-        10.12,
-        10.05,
-        10.05,
-        9.98,
-        10.05,
-        10.07,
-        9.92,
-        10.01,
-        10.1,
-        10.02,
-        10.25,
-        10.37,
-        10.4,
-        10.47,
-        10.46,
-        10.57,
-        10.65,
-        10.63,
-    ]
-    LCL_expected = [
-        9.73,
-        9.64,
-        9.58,
-        9.53,
-        9.5,
-        9.48,
-        9.46,
-        9.44,
-        9.43,
-        9.42,
-        9.41,
-        9.41,
-        9.4,
-        9.4,
-        9.39,
-        9.39,
-        9.39,
-        9.39,
-        9.39,
-        9.39,
-        9.38,
-        9.38,
-        9.38,
-        9.38,
-        9.38,
-        9.38,
-        9.38,
-        9.38,
-        9.38,
-        9.38,
-    ]
-    UCL_expected = [
-        10.27,
-        10.36,
-        10.42,
-        10.47,
-        10.5,
-        10.52,
-        10.54,
-        10.56,
-        10.57,
-        10.58,
-        10.59,
-        10.59,
-        10.6,
-        10.6,
-        10.61,
-        10.61,
-        10.61,
-        10.61,
-        10.61,
-        10.61,
-        10.62,
-        10.62,
-        10.62,
-        10.62,
-        10.62,
-        10.62,
-        10.62,
-        10.62,
-        10.62,
-        10.62,
-    ]
-    outside_CL_expected = [
-        False,
-        False,
-        False,
-        False,
-        False,
-        False,
-        False,
-        False,
-        False,
-        False,
-        False,
-        False,
-        False,
-        False,
-        False,
-        False,
-        False,
-        False,
-        False,
-        False,
-        False,
-        False,
-        False,
-        False,
-        False,
-        False,
-        False,
-        False,
-        True,
-        True,
-    ]
-
+    Z_expected = [9.94, 9.75, 9.7, 9.9, 10.13, 10.13, 9.92, 10.08, 9.99, 10.02, 9.92, 10.08, 10.12, 10.05, 10.05, 9.98,
+                  10.05, 10.07,
+                  9.92, 10.01, 10.1, 10.02, 10.25, 10.37, 10.4, 10.47, 10.46, 10.57, 10.65, 10.63,
+                  ]
+    LCL_expected = [9.73, 9.64, 9.58, 9.53, 9.5, 9.48, 9.46, 9.44, 9.43, 9.42, 9.41, 9.41, 9.4, 9.4, 9.39, 9.39, 9.39,
+                    9.39, 9.39, 9.39,
+                    9.38, 9.38, 9.38, 9.38, 9.38, 9.38, 9.38, 9.38, 9.38, 9.38,
+                    ]
+    UCL_expected = [10.27, 10.36, 10.42, 10.47, 10.5, 10.52, 10.54, 10.56, 10.57, 10.58, 10.59, 10.59, 10.6, 10.6,
+                    10.61, 10.61,
+                    10.61, 10.61, 10.61, 10.61, 10.62, 10.62, 10.62, 10.62, 10.62, 10.62, 10.62, 10.62, 10.62, 10.62,
+                    ]
+    outside_CL_expected = [False, False, False, False, False, False, False, False, False, False, False, False, False,
+                           False,
+                           False, False, False, False, False, False,
+                           False, False, False, False, False, False, False, False, True, True,
+                           ]
+    # fmt: on
     chart = EWMAChart(lambda_=0.1, mu_process_target=10, sigma=1).fit(df_phase2=df_phase2_input)
     Z_output = np.array(chart.df_phase2_stats["Z"]).round(2).tolist()
     LCL_output = np.array(chart.df_phase2_stats["LCL"]).round(2).tolist()
@@ -455,6 +325,7 @@ def test_PCAModelChart_fit_correct_values():
                    33, 22, 11, 24, 27, 28],
         }
     )
+    # fmt: on
     chart = PCAModelChart(n_sample_size=1, alpha=0.05, combine_T2_and_Q=False)
     chart_combined = PCAModelChart(n_sample_size=1, alpha=0.05, combine_T2_and_Q=True)
     chart.fit(df_phase1=df_phase1, n_components_to_retain=2)
@@ -466,6 +337,7 @@ def test_PCAModelChart_fit_correct_values():
 
     expected_T2_UCL = 5.393
     expected_Q_UCL = 1.852
+    # fmt: off
     expected_T2 = pd.Series(
         [2.148, 0.375, 0.239, 5.399, 0.952, 0.172, 1.351, 2.283, 0.285, 1.244, 2.946, 7.842,
          1.351, 0.173, 4.095, 1.081, 0.723, 3.781, 1.400, 0.537, 1.625,
@@ -495,12 +367,13 @@ def test_PCAModelChart_predict_correct_values():
                    33, 22, 11, 24, 27, 28],
         }
     )
+    # fmt: on
     chart = PCAModelChart(n_sample_size=1, alpha=0.05, combine_T2_and_Q=False)
     chart_combined = PCAModelChart(n_sample_size=1, alpha=0.05, combine_T2_and_Q=True)
     chart.fit(df_phase1=df_phase1, n_components_to_retain=2)
     chart_combined.fit(df_phase1=df_phase1, n_components_to_retain=2)
-    preds = chart.predict(df_phase2=df_phase1)
-    preds_combined = chart_combined.predict(df_phase2=df_phase1)
+    preds = chart.predict(df_phase2=df_phase1, predict_proba=False)
+    preds_combined = chart_combined.predict(df_phase2=df_phase1, predict_proba=False)
 
     output_T2 = preds["T2"]
     output_T2_UCL = preds["UCL_T2"][0]
@@ -512,6 +385,7 @@ def test_PCAModelChart_predict_correct_values():
     expected_T2_UCL = 7.768
     expected_Q_UCL = 1.852
     expected_TQ_UCL = 0.6065
+    # fmt: off
     expected_T2 = pd.Series(
         [2.148, 0.375, 0.239, 5.399, 0.952, 0.172, 1.351, 2.283, 0.285, 1.244, 2.946, 7.842,
          1.351, 0.173, 4.095, 1.081, 0.723, 3.781, 1.400, 0.537, 1.625,
@@ -548,8 +422,8 @@ def test_compute_T2_contributions():
                    33, 22, 11, 24, 27, 28],
         }
     )
+    # fmt: on
     df_expected = pd.DataFrame(dict(PC1=[2.139, 0.174, 0.006], PC2=[0.01, 0.2, 0.233], PC3=[0.832, 0.002, 2.497]))
     chart = PCAModelChart(n_sample_size=1).fit(df_phase1=df_phase1, n_components_to_retain=3, verbose=True)
     df_output = chart.df_contributions.iloc[0:3].round(3)
     assert_frame_equal(df_output, df_expected, check_dtype=False)
-    # fmt: on

@@ -8,7 +8,16 @@ import sklearn.decomposition
 import sklearn.preprocessing
 from statsmodels.tsa.stattools import acf, pacf
 
-from spc.definitions import *
+from spc.definitions import (
+    single_phase_line_color,
+    get_line_width,
+    get_outside_CL_marker_size,
+    UCL_color,
+    LCL_color,
+    multivariate_phase2_color,
+    outlier_marker_color,
+    multivariate_phase1_color,
+)
 
 
 def vprint(verbose: Union[bool, int], str_to_print: str, **kwargs):
@@ -56,7 +65,9 @@ def standardize_and_PCA(df: pd.DataFrame, n_components: Optional[int] = None):
     :return: the standardized and PCA transformed dataframe, and the sklearn PCA and StandardScaler objects
     """
     scaler = sklearn.preprocessing.StandardScaler().fit(df)
-    scaler.scale_ = np.std(df, ddof=1, axis=0).values  # use unbiased estimator instead of biased
+    scaler.scale_ = np.std(
+        df, ddof=1, axis=0
+    ).values  # use unbiased estimator instead of biased
     df_transformed = scaler.transform(df)
     pca = sklearn.decomposition.PCA(n_components=n_components).fit(df_transformed)
     df_transformed = pca.transform(df_transformed)
@@ -64,7 +75,9 @@ def standardize_and_PCA(df: pd.DataFrame, n_components: Optional[int] = None):
 
 
 def apply_standardize_and_PCA(
-    df: pd.DataFrame, scaler: sklearn.preprocessing._data.StandardScaler, pca: sklearn.decomposition._pca.PCA,
+        df: pd.DataFrame,
+        scaler: sklearn.preprocessing._data.StandardScaler,
+        pca: sklearn.decomposition._pca.PCA,
 ):
     """
     This function should be used for new data to be transformed using an already estimated standardize and
@@ -80,31 +93,24 @@ def apply_standardize_and_PCA(
     return df_transformed
 
 
-def get_num_of_PCs_to_retain(PCA_object: sklearn.decomposition.PCA, PC_variance_explained_min: float):
+def get_num_of_PCs_to_retain(
+        PCA_object: sklearn.decomposition.PCA, PC_variance_explained_min: float
+):
     cumulative_variances = np.cumsum(PCA_object.explained_variance_ratio_)
-    num_of_PCs_to_retain = np.where(cumulative_variances > PC_variance_explained_min)[0][0] + 1
+    num_of_PCs_to_retain = (
+            np.where(cumulative_variances > PC_variance_explained_min)[0][0] + 1
+    )
     return num_of_PCs_to_retain, cumulative_variances
 
 
-# def standardize_and_PCA(df, n_components: Optional[int] = None, PC_variance_explained_min: float = 0.9):
-#     scaler = StandardScaler().fit(df)
-#     df_transformed = scaler.transform(df)
-#     pca = PCA(n_components=n_components).fit(df_transformed)
-#     if n_components is None:
-#         cumulative_variances = np.cumsum(pca.explained_variance_ratio_)
-#         n_components = np.where(cumulative_variances > PC_variance_explained_min)[0][0] + 1
-#         print(
-#             f"PC's used: {n_components}\nData variation explained: {100 * cumulative_variances[n_components - 1]:.2f} %")
-#     df_transformed = pca.transform(df_transformed)
-#     df_transformed = df_transformed[:, :n_components]
-#     df_transformed = pd.DataFrame(df_transformed,
-#                                   columns=[f"PC{i}" for i in range(1, n_components + 1)], index=df.index)
-#     return df_transformed, pca, scaler
-
-
-def plot_features_acf(df, gridsize: Tuple[int, int] = None, nlags: int = 50, corr_type="acf"):
+def plot_features_acf(
+        df, gridsize: Tuple[int, int] = None, nlags: int = 50, corr_type="acf"
+):
     if corr_type == "acf":
-        df_acf = {f"{label}": acf(values, nlags=nlags, fft=True) for label, values in df.items()}
+        df_acf = {
+            f"{label}": acf(values, nlags=nlags, fft=True)
+            for label, values in df.items()
+        }
     else:
         df_acf = {f"{label}": pacf(values, nlags=nlags) for label, values in df.items()}
     df_acf = pd.DataFrame(df_acf)
@@ -116,7 +122,9 @@ def plot_features_acf(df, gridsize: Tuple[int, int] = None, nlags: int = 50, cor
     if len(axs.shape) == 1:
         for plot_number in range(max(nrows, ncols)):
             col_name = col_names[col_counter]
-            axs[plot_number].stem(df_acf[col_name], linefmt="grey", markerfmt="", bottom=0, basefmt="r--")
+            axs[plot_number].stem(
+                df_acf[col_name], linefmt="grey", markerfmt="", bottom=0, basefmt="r--"
+            )
             axs[plot_number].set_title(col_name)
             col_counter += 1
     else:
@@ -124,7 +132,11 @@ def plot_features_acf(df, gridsize: Tuple[int, int] = None, nlags: int = 50, cor
             for col in range(ncols):
                 col_name = col_names[col_counter]
                 axs[row, col].stem(
-                    df_acf[col_name], linefmt="grey", markerfmt="", bottom=0, basefmt="r--",
+                    df_acf[col_name],
+                    linefmt="grey",
+                    markerfmt="",
+                    bottom=0,
+                    basefmt="r--",
                 )
                 axs[row, col].set_title(col_name)
                 col_counter += 1
@@ -142,7 +154,9 @@ class ControlChartPlotMixin:
 
     @staticmethod
     def _plot_scalar_or_array(
-        x: Union[float, np.ndarray, List[float]], ax: matplotlib.axes._subplots.Axes, color="red",
+            x: Union[float, np.ndarray, List[float]],
+            ax: matplotlib.axes._subplots.Axes,
+            color="red",
     ):
         if isinstance(x, (np.ndarray, pd.Series, list)):
             ax.plot(x, color=color, linestyle="dashed")
@@ -185,12 +199,12 @@ class ControlChartPlotMixin:
         return fig
 
     def _plot_single_phase_multivariate(
-        self,
-        df,
-        y_limit_offsets=(0.95, 1.05),
-        gridsize: Tuple[int] = None,
-        subplot_titles: List[str] = None,
-        y_labels: List[str] = None,
+            self,
+            df,
+            y_limit_offsets=(0.95, 1.05),
+            gridsize: Tuple[int] = None,
+            subplot_titles: List[str] = None,
+            y_labels: List[str] = None,
     ):
 
         N_samples = df.shape[0]
@@ -199,7 +213,11 @@ class ControlChartPlotMixin:
         fig, axs = plt.subplots(*gridsize, sharex="all")
         for i in range(number_of_plots):
             stat_to_plot = self.stat_name[i]
-            LCL_to_plot = df[f"LCL_{stat_to_plot}"] if f"LCL_{stat_to_plot}" in df.columns else None
+            LCL_to_plot = (
+                df[f"LCL_{stat_to_plot}"]
+                if f"LCL_{stat_to_plot}" in df.columns
+                else None
+            )
             UCL_to_plot = df[f"UCL_{stat_to_plot}"]
             df_outside_CL = df.loc[df[f"outside_CL_{stat_to_plot}"], stat_to_plot]
             axs[i].plot(
@@ -229,7 +247,9 @@ class ControlChartPlotMixin:
                 self._plot_scalar_or_array(LCL_to_plot, axs[i], color=LCL_color)
             axs[i].legend(legend_labels, ncol=len(legend_labels))
             y_limits = axs[i].get_ylim()
-            axs[i].set_ylim(y_limits[0] * y_limit_offsets[0], y_limits[1] * y_limit_offsets[1])
+            axs[i].set_ylim(
+                y_limits[0] * y_limit_offsets[0], y_limits[1] * y_limit_offsets[1]
+            )
             title = stat_to_plot if subplot_titles is None else subplot_titles[i]
             y_label = "" if y_labels is None else y_labels[i]
             axs[i].set_ylabel(y_label)
@@ -237,18 +257,21 @@ class ControlChartPlotMixin:
         return fig, axs
 
     def _plot_two_phases(
-        self, df_phase1_results: pd.DataFrame, df_phase2_results: pd.DataFrame, y_limit_offsets=(0.95, 1.05),
+            self,
+            df_phase1_results: pd.DataFrame,
+            df_phase2_results: pd.DataFrame,
+            y_limit_offsets=(0.95, 1.05),
     ):
         fig, ax = plt.subplots(1, 1)
         df = pd.concat([df_phase1_results, df_phase2_results])
         df["phase"] = 1
-        df["phase"].iloc[len(df_phase1_results) :] = 2
+        df["phase"].iloc[len(df_phase1_results):] = 2
         df = df.reset_index()
         N_samples = df.shape[0]
         df_outside_CL = df.loc[df["outside_CL"], self.stat_name]
 
-        LCL_to_plot = df[f"LCL"] if f"LCL" in df.columns else None
-        UCL_to_plot = df[f"UCL"]
+        LCL_to_plot = df["LCL"] if "LCL" in df.columns else None
+        UCL_to_plot = df["UCL"]
 
         legend_labels = ["Phase 1", "Phase 2"]
         plt.plot(
@@ -290,19 +313,21 @@ class ControlChartPlotMixin:
         return fig
 
     def _plot_two_phases_multivariate(
-        self,
-        df_phase1_results: pd.DataFrame,
-        df_phase2_results: pd.DataFrame,
-        y_limit_offsets=(0.95, 1.05),
-        gridsize: Tuple[int] = None,
-        subplot_titles: List[str] = None,
-        y_labels: List[str] = None,
+            self,
+            df_phase1_results: pd.DataFrame,
+            df_phase2_results: pd.DataFrame,
+            y_limit_offsets=(0.95, 1.05),
+            gridsize: Tuple[int] = None,
+            subplot_titles: List[str] = None,
+            y_labels: List[str] = None,
     ):
 
-        index_is_datetime_format = isinstance(self.df_phase1_stats.index, pd.core.indexes.datetimes.DatetimeIndex)
+        index_is_datetime_format = isinstance(
+            self.df_phase1_stats.index, pd.core.indexes.datetimes.DatetimeIndex
+        )
         df = pd.concat([df_phase1_results, df_phase2_results])
         df["phase"] = 1
-        df["phase"].iloc[len(df_phase1_results) :] = 2
+        df["phase"].iloc[len(df_phase1_results):] = 2
         if not index_is_datetime_format:
             df = df.reset_index()
         N_samples = df.shape[0]
@@ -312,7 +337,11 @@ class ControlChartPlotMixin:
         fig, axs = plt.subplots(*gridsize, sharex="all")
         for i in range(number_of_plots):
             stat_to_plot = self.stat_name[i]
-            LCL_to_plot = df[f"LCL_{stat_to_plot}"] if f"LCL_{stat_to_plot}" in df.columns else None
+            LCL_to_plot = (
+                df[f"LCL_{stat_to_plot}"]
+                if f"LCL_{stat_to_plot}" in df.columns
+                else None
+            )
             UCL_to_plot = df[f"UCL_{stat_to_plot}"]
             df_outside_CL = df.loc[df[f"outside_CL_{stat_to_plot}"], stat_to_plot]
             axs[i].plot(
@@ -349,7 +378,9 @@ class ControlChartPlotMixin:
                 self._plot_scalar_or_array(LCL_to_plot, axs[i], color=LCL_color)
             axs[i].legend(ncol=2)
             y_limits = axs[i].get_ylim()
-            axs[i].set_ylim(y_limits[0] * y_limit_offsets[0], y_limits[1] * y_limit_offsets[1])
+            axs[i].set_ylim(
+                y_limits[0] * y_limit_offsets[0], y_limits[1] * y_limit_offsets[1]
+            )
             title = stat_to_plot if subplot_titles is None else subplot_titles[i]
             y_label = "" if y_labels is None else y_labels[i]
             axs[i].set_ylabel(y_label)
@@ -361,7 +392,10 @@ class ControlChartPlotMixin:
 
 def plot_df_acf(df, gridsize: Tuple[int, int] = None, nlags: int = 50, corr_type="acf"):
     if corr_type == "acf":
-        df_acf = {f"{label}": acf(values, nlags=nlags, fft=True) for label, values in df.items()}
+        df_acf = {
+            f"{label}": acf(values, nlags=nlags, fft=True)
+            for label, values in df.items()
+        }
     else:
         df_acf = {f"{label}": pacf(values, nlags=nlags) for label, values in df.items()}
     df_acf = pd.DataFrame(df_acf)
@@ -372,7 +406,9 @@ def plot_df_acf(df, gridsize: Tuple[int, int] = None, nlags: int = 50, corr_type
     for row in range(nrows):
         for col in range(ncols):
             col_name = col_names[col_counter]
-            axs[row, col].stem(df_acf[col_name], linefmt="grey", markerfmt="", bottom=0, basefmt="r--")
+            axs[row, col].stem(
+                df_acf[col_name], linefmt="grey", markerfmt="", bottom=0, basefmt="r--"
+            )
             axs[row, col].set_title(col_name)
             col_counter += 1
     fig.suptitle("Autocorrelation" if corr_type == "acf" else "Partial autocorrelation")

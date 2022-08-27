@@ -1,5 +1,7 @@
-from spc.core import *
-from spc.helpers import *
+import pandas as pd
+from matplotlib import pyplot as plt
+
+from spc.core import XBarChart, RChart, SChart, EWMAChart
 
 plt.style.use("seaborn")
 
@@ -8,12 +10,16 @@ df_phase1 = pd.DataFrame({"x1": [1, 2, 3, 1, 2, 3, 5, 4, 3, 5, 6, 7, 5, 3, 1, 2,
 df_phase2 = pd.DataFrame({"x1": [2, 3, 3, 5, 10, 14, 14]})
 # fmt: on
 
-xchart = XBarChart(n_sample_size=3, variability_estimator="std").fit(df_phase1=df_phase1)
+xchart = XBarChart(n_sample_size=3, variability_estimator="std").fit(
+    df_phase1=df_phase1
+)
 print(xchart.df_phase1_results)
 xchart.plot_phase1()
 plt.show()
 
-xchart = XBarChart(n_sample_size=3, variability_estimator="range").fit(df_phase1=df_phase1)
+xchart = XBarChart(n_sample_size=3, variability_estimator="range").fit(
+    df_phase1=df_phase1
+)
 print(xchart.df_phase1_results)
 xchart.plot_phase1()
 plt.show()
