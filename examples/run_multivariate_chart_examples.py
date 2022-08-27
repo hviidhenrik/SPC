@@ -1,5 +1,8 @@
-from spc.core import *
-from spc.helpers import *
+import numpy as np
+import pandas as pd
+from matplotlib import pyplot as plt
+
+from spc.core import PCAModelChart
 
 plt.style.use("seaborn")
 

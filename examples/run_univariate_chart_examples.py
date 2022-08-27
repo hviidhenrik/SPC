@@ -1,7 +1,7 @@
 import pandas as pd
 from matplotlib import pyplot as plt
 
-from spc.core import XBarChart, RChart, SChart, EWMAChart
+from spc.core import EWMAChart, RChart, SChart, XBarChart
 
 plt.style.use("seaborn")
 

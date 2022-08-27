@@ -6,8 +6,13 @@ import pandas as pd
 import pytest
 from pandas._testing import assert_frame_equal
 
-from spc.helpers import flatten_list, get_df_with_sample_id, multiply_matrices, standardize_and_PCA, \
-    get_num_of_PCs_to_retain
+from spc.helpers import (
+    flatten_list,
+    get_df_with_sample_id,
+    get_num_of_PCs_to_retain,
+    multiply_matrices,
+    standardize_and_PCA,
+)
 
 
 def test_flatten_list():
@@ -61,7 +66,7 @@ def test_multiply_matrices():
     [[0.1, 1], [0.55, 2], [0.9, 3], [0.95, 3]],
 )
 def test_get_num_of_PCs_to_retain(
-        dataframe_for_PCAModel_phase1, variance_explain_min, expected_num_of_PCs_to_retain
+    dataframe_for_PCAModel_phase1, variance_explain_min, expected_num_of_PCs_to_retain
 ):
     _, PCA_object, _ = standardize_and_PCA(df=dataframe_for_PCAModel_phase1)
     num_of_PCs_to_retain, _ = get_num_of_PCs_to_retain(

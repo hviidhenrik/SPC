@@ -9,14 +9,14 @@ import sklearn.preprocessing
 from statsmodels.tsa.stattools import acf, pacf
 
 from spc.definitions import (
-    single_phase_line_color,
+    LCL_color,
+    UCL_color,
     get_line_width,
     get_outside_CL_marker_size,
-    UCL_color,
-    LCL_color,
+    multivariate_phase1_color,
     multivariate_phase2_color,
     outlier_marker_color,
-    multivariate_phase1_color,
+    single_phase_line_color,
 )
 
 
@@ -75,9 +75,9 @@ def standardize_and_PCA(df: pd.DataFrame, n_components: Optional[int] = None):
 
 
 def apply_standardize_and_PCA(
-        df: pd.DataFrame,
-        scaler: sklearn.preprocessing._data.StandardScaler,
-        pca: sklearn.decomposition._pca.PCA,
+    df: pd.DataFrame,
+    scaler: sklearn.preprocessing._data.StandardScaler,
+    pca: sklearn.decomposition._pca.PCA,
 ):
     """
     This function should be used for new data to be transformed using an already estimated standardize and
@@ -94,17 +94,17 @@ def apply_standardize_and_PCA(
 
 
 def get_num_of_PCs_to_retain(
-        PCA_object: sklearn.decomposition.PCA, PC_variance_explained_min: float
+    PCA_object: sklearn.decomposition.PCA, PC_variance_explained_min: float
 ):
     cumulative_variances = np.cumsum(PCA_object.explained_variance_ratio_)
     num_of_PCs_to_retain = (
-            np.where(cumulative_variances > PC_variance_explained_min)[0][0] + 1
+        np.where(cumulative_variances > PC_variance_explained_min)[0][0] + 1
     )
     return num_of_PCs_to_retain, cumulative_variances
 
 
 def plot_features_acf(
-        df, gridsize: Tuple[int, int] = None, nlags: int = 50, corr_type="acf"
+    df, gridsize: Tuple[int, int] = None, nlags: int = 50, corr_type="acf"
 ):
     if corr_type == "acf":
         df_acf = {
@@ -154,9 +154,9 @@ class ControlChartPlotMixin:
 
     @staticmethod
     def _plot_scalar_or_array(
-            x: Union[float, np.ndarray, List[float]],
-            ax: matplotlib.axes._subplots.Axes,
-            color="red",
+        x: Union[float, np.ndarray, List[float]],
+        ax: matplotlib.axes._subplots.Axes,
+        color="red",
     ):
         if isinstance(x, (np.ndarray, pd.Series, list)):
             ax.plot(x, color=color, linestyle="dashed")
@@ -199,12 +199,12 @@ class ControlChartPlotMixin:
         return fig
 
     def _plot_single_phase_multivariate(
-            self,
-            df,
-            y_limit_offsets=(0.95, 1.05),
-            gridsize: Tuple[int] = None,
-            subplot_titles: List[str] = None,
-            y_labels: List[str] = None,
+        self,
+        df,
+        y_limit_offsets=(0.95, 1.05),
+        gridsize: Tuple[int] = None,
+        subplot_titles: List[str] = None,
+        y_labels: List[str] = None,
     ):
 
         N_samples = df.shape[0]
@@ -257,15 +257,15 @@ class ControlChartPlotMixin:
         return fig, axs
 
     def _plot_two_phases(
-            self,
-            df_phase1_results: pd.DataFrame,
-            df_phase2_results: pd.DataFrame,
-            y_limit_offsets=(0.95, 1.05),
+        self,
+        df_phase1_results: pd.DataFrame,
+        df_phase2_results: pd.DataFrame,
+        y_limit_offsets=(0.95, 1.05),
     ):
         fig, ax = plt.subplots(1, 1)
         df = pd.concat([df_phase1_results, df_phase2_results])
         df["phase"] = 1
-        df["phase"].iloc[len(df_phase1_results):] = 2
+        df["phase"].iloc[len(df_phase1_results) :] = 2
         df = df.reset_index()
         N_samples = df.shape[0]
         df_outside_CL = df.loc[df["outside_CL"], self.stat_name]
@@ -313,13 +313,13 @@ class ControlChartPlotMixin:
         return fig
 
     def _plot_two_phases_multivariate(
-            self,
-            df_phase1_results: pd.DataFrame,
-            df_phase2_results: pd.DataFrame,
-            y_limit_offsets=(0.95, 1.05),
-            gridsize: Tuple[int] = None,
-            subplot_titles: List[str] = None,
-            y_labels: List[str] = None,
+        self,
+        df_phase1_results: pd.DataFrame,
+        df_phase2_results: pd.DataFrame,
+        y_limit_offsets=(0.95, 1.05),
+        gridsize: Tuple[int] = None,
+        subplot_titles: List[str] = None,
+        y_labels: List[str] = None,
     ):
 
         index_is_datetime_format = isinstance(
@@ -327,7 +327,7 @@ class ControlChartPlotMixin:
         )
         df = pd.concat([df_phase1_results, df_phase2_results])
         df["phase"] = 1
-        df["phase"].iloc[len(df_phase1_results):] = 2
+        df["phase"].iloc[len(df_phase1_results) :] = 2
         if not index_is_datetime_format:
             df = df.reset_index()
         N_samples = df.shape[0]
