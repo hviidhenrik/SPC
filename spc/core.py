@@ -719,9 +719,7 @@ class PCAModelChart(HotellingT2Chart):
         )
 
         # 2nd, calculate Q statistic and its control limit
-        Q = self._compute_Q_values(
-            df_phase1
-        )  # PCA is done inside this function, so Q is done on the PC's
+        Q = self._compute_Q_values(df_phase1)  # PCA is done inside this function, so Q is done on the PC's
         self.df_phase1_stats["Q"] = Q
         self.UCL_Q = self._compute_Q_UCL(Q)
         if self.combine_T2_and_Q:
@@ -764,17 +762,13 @@ class PCAModelChart(HotellingT2Chart):
 
         return self
 
-    def predict(self, df_phase2: pd.DataFrame, predict_proba: bool = True):
+    def predict(self, df_phase2: pd.DataFrame):
         """
         Uses the estimated phase 1 statistics from the fit() method to calculate phase 2 statistics.
         A dataframe will be returned with T^2, Q, UCL's for both, indicators whether they are outside the UCL
-        and cumulated proportion of points outside. In case predict_proba argument is True, the T^2 and Q values
-        will not be the actual values, but rather probabilities from plugging them into their estimated
-        phase 1 empirical cumulative distribution function. This will make the output interpretable as probabilities
-        of being anomalous.
+        and cumulated proportion of points outside.
 
         :param df_phase2: the phase 2 data with the same column names as provided in the phase 1 data
-        :param predict_proba: whether T2 and Q in the returned dataframe should be converted to probabilities
         :return: a dataframe with phase 2 statistics
         """
         df_transformed = apply_standardize_and_PCA(df_phase2, self.scaler, self.PCA)
@@ -807,32 +801,6 @@ class PCAModelChart(HotellingT2Chart):
         df_phase2_stats = pd.concat([df_phase2_stats, df_Q_stats], axis=1)
         df_phase2_stats.index = df_phase2.index
 
-        if predict_proba:
-            # estimate ECDF for phase 1 T2 and Q which is shifted to the right by their median values. Plug phase 2
-            # T2 and Q into this and get probabilities out. Replace T2 and Q in output dataframe with these probs.
-            # We add the median so obs by the center of phase 1 distributions don't get high anomaly probabilities.
-            # TODO: as a reminder, I might want to not replace T2 and Q vals, but simply add new col with probs...
-            medians = self.df_phase1_stats[["T2", "Q"]].median()
-            ecdf_T2 = ECDF(self.df_phase1_stats["T2"] + medians.loc["T2"])
-            ecdf_Q = ECDF(self.df_phase1_stats["Q"] + medians.loc["Q"])
-            df_phase2_stats["T2"] = ecdf_T2(df_phase2_stats["T2"])
-            df_phase2_stats["Q"] = ecdf_Q(df_phase2_stats["Q"])
-
-            # plot estimated CDF
-            # self.df_phase1_stats["T2"].plot(kind="kde")
-            # plt.plot(ecdf_T2.x, ecdf_T2.y, label="T2")
-            # plt.plot(ecdf_Q.x, ecdf_Q.y, label="Q")
-            # plt.axvline(medians.loc["T2"], label="T2 phase 1 mean", color="black")
-            # plt.axvline(medians.loc["Q"], label="Q phase 1 mean", color="red")
-            # plt.legend()
-            # plt.show()
-
-            # plot phase 2 T or Q as time series data
-            # (df_phase2_stats[["ecdf_Q"]].astype(int)
-            #  .rolling(window=200).mean()
-            #  .plot(subplots=False))
-            # plt.axvline(x=5, color="red", linestyle="--")
-            # plt.show()
         return df_phase2_stats
 
     def get_contributions(self, df: pd.DataFrame):
@@ -998,6 +966,9 @@ class PCAModelChart(HotellingT2Chart):
         plt.suptitle("Phase 1 and 2 PCA SPC model")
         fig.tight_layout()
         return fig, axs
+
+    def plot_contribution_heatmap(self, df_phase2: pd.DataFrame):
+        raise NotImplementedError
 
 
 # TODO:

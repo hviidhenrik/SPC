@@ -411,8 +411,8 @@ def test_PCAModelChart_predict_correct_values():
     chart_combined = PCAModelChart(n_sample_size=1, alpha=0.05, combine_T2_and_Q=True)
     chart.fit(df_phase1=df_phase1, n_components_to_retain=2)
     chart_combined.fit(df_phase1=df_phase1, n_components_to_retain=2)
-    preds = chart.predict(df_phase2=df_phase1, predict_proba=False)
-    preds_combined = chart_combined.predict(df_phase2=df_phase1, predict_proba=False)
+    preds = chart.predict(df_phase2=df_phase1)
+    preds_combined = chart_combined.predict(df_phase2=df_phase1)
 
     output_T2 = preds["T2"]
     output_T2_UCL = preds["UCL_T2"][0]
