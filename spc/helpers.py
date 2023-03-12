@@ -1,6 +1,5 @@
 from typing import List, Optional, Tuple, Union
 
-import matplotlib.axes._subplots
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -155,7 +154,7 @@ class ControlChartPlotMixin:
     @staticmethod
     def _plot_scalar_or_array(
         x: Union[float, np.ndarray, List[float]],
-        ax: matplotlib.axes._subplots.Axes,
+        ax,
         color="red",
     ):
         if isinstance(x, (np.ndarray, pd.Series, list)):

@@ -1104,6 +1104,9 @@ class EWMAChart(BaseControlChart, ControlChartPlotMixin):
 
 
 def cusum():
+    """
+    Not implemented yet
+    """
     pass
 
 
@@ -1124,8 +1127,14 @@ def changepoint_model():
 
 
 def plot_ACF():
+    """
+    Not implemented yet
+    """
     pass
 
 
 def plot_contributions():
+    """
+    Not implemented yet
+    """
     pass

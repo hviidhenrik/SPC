@@ -14,5 +14,5 @@ based preprocessing is also implemented.
 The aim of the procedures is to have a consistent and standardized, easy-to-use API, so
 that each procedure is used in the same way and with the same calls, attributes etc. Some 
 inspiration for this comes from the popular scikit-learn library, where most procedures have
-a fit() method that does the heavy lifting by estimating necessary model parameters. This
+a `fit()` method that does the heavy lifting by estimating necessary model parameters. This
 is the case for this package as well.
